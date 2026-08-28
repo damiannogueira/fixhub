@@ -1,0 +1,42 @@
+# Normalización general de archivos de texto
+* text=auto
+
+# Código fuente y configuración: LF
+*.java text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+
+*.json text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+*.md text eol=lf
+*.txt text eol=lf
+*.properties text eol=lf
+
+# Scripts Unix/macOS
+*.sh text eol=lf
+
+# Scripts Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Imágenes y archivos binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+
+*.pdf binary
+*.zip binary
+*.jar binary
