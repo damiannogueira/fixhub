@@ -118,11 +118,15 @@ Quedan fuera del alcance inicial:
 
 - Damián Nogueira
 - Gabriel Etchegoyen
-- Manuel Galarza
+- Manuel Galarza 
+
+## Tutor
+
+- Sofia Raia
 
 ## Estado del proyecto
 
-Proyecto en etapa inicial de planificación y diseño correspondiente al Trabajo Final Integrador.
+Proyecto en etapa inicial de planificación y diseño correspondiente al Trabajo Final Integrador correspondiente a la Tecnicatura Universitaria en Programación a Distancia.
 
 ## Instalación y ejecución
 
