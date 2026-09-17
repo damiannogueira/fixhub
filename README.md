@@ -32,6 +32,20 @@ Desarrollar el MVP de FixHub, un Sistema Integral de Gestión para Talleres y Se
 - Dashboard básico con indicadores de gestión.
 - Interfaz web responsive.
 
+## Módulos funcionales
+
+Para organizar las responsabilidades principales del sistema, FixHub se divide en cinco módulos funcionales:
+
+1. Autenticación, usuarios y roles.
+2. Clientes y equipos.
+3. Órdenes de trabajo.
+4. Presupuestos y aprobación.
+5. Inventario y stock.
+
+El diagnóstico, el historial y la trazabilidad, el seguimiento del cliente y el dashboard se integran dentro de estos módulos o funcionan de manera transversal, por lo que no se consideran módulos independientes.
+
+La definición detallada de responsabilidades, dependencias, reglas y permisos se encuentra en la [Definición de módulos de la Segunda Entrega](docs/entregas/entrega_02/modulos.md).
+
 ## Roles del sistema
 
 FixHub contempla los siguientes roles:
@@ -43,15 +57,21 @@ FixHub contempla los siguientes roles:
 
 En servicios técnicos pequeños, una misma persona puede desempeñar más de una función dentro del negocio.
 
+Una cuenta de usuario podrá tener uno o varios roles simultáneamente. Cuando un usuario tenga más de un rol, acumulará los permisos correspondientes a cada uno.
+
 ## Flujo principal de una orden de trabajo
 
-El ciclo principal de una orden contempla los siguientes estados:
+El ciclo de una orden de trabajo depende de si la reparación requiere o no un presupuesto.
 
-`Recibido → En diagnóstico → Pendiente de aprobación → Aprobado → En reparación → Finalizado → Listo para retirar → Entregado`
+Cuando se requiere presupuesto, el flujo principal es:
 
-También se contemplan el rechazo del presupuesto y la cancelación de la orden cuando corresponda.
+`RECIBIDA → EN_DIAGNOSTICO → PENDIENTE_APROBACION → APROBADA → EN_REPARACION → FINALIZADA → LISTA_PARA_RETIRAR → ENTREGADA`
 
-Una orden que requiera presupuesto no podrá pasar al estado **En reparación** hasta que dicho presupuesto haya sido aprobado por el cliente.
+Cuando no se requiere presupuesto, la orden puede avanzar directamente desde `EN_DIAGNOSTICO` hacia `EN_REPARACION`.
+
+Si el cliente rechaza un presupuesto requerido, la orden pasa de `PENDIENTE_APROBACION` a `CANCELADA` y no continúa hacia reparación.
+
+Una orden que requiera presupuesto no podrá pasar a `EN_REPARACION` hasta que dicho presupuesto haya sido aprobado por el cliente. La cancelación normal de una orden solamente se contempla antes de iniciar la reparación.
 
 ## Tecnologías
 
@@ -126,7 +146,9 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-Proyecto en etapa inicial de planificación y diseño correspondiente al Trabajo Final Integrador correspondiente a la Tecnicatura Universitaria en Programación a Distancia.
+Proyecto en etapa de diseño correspondiente al Trabajo Final Integrador de la Tecnicatura Universitaria en Programación a Distancia.
+
+Actualmente se encuentra en desarrollo la documentación de la Segunda Entrega. La definición de los módulos funcionales ya fue consolidada y documentada, mientras continúan el diseño de la base de datos y las restantes tareas de documentación previas al inicio de la implementación.
 
 ## Instalación y ejecución
 
