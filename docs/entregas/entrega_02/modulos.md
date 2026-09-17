@@ -43,6 +43,7 @@ Las siguientes funcionalidades forman parte del MVP, pero no se consideran módu
 - Gestionar la autenticación e inicio de sesión.
 - Administrar usuarios.
 - Administrar roles y permisos.
+- Permitir la creación controlada de cuentas de acceso con rol Cliente durante el registro de un cliente.
 - Controlar el acceso a las funcionalidades según los roles asignados.
 
 **Dependencias:**
@@ -52,11 +53,19 @@ Las siguientes funcionalidades forman parte del MVP, pero no se consideran módu
 **Reglas relevantes:**
 - Una cuenta podrá tener uno o varios roles simultáneamente.
 - Cuando un usuario tenga varios roles, sus permisos se acumularán según los roles asignados.
-- La creación y administración de usuarios y la asignación de roles estarán reservadas al Administrador.
+- La administración general de usuarios y la asignación de roles Administrador, Recepcionista y Técnico estarán reservadas al Administrador.
+- Durante el registro de un cliente sin cuenta, el Recepcionista deberá crearle una cuenta de acceso únicamente con rol Cliente.
+- Si el cliente ya posee una cuenta de acceso, se reutilizará la existente para futuras órdenes y equipos.
+- La cuenta con rol Cliente deberá quedar vinculada exclusivamente a un único registro de Cliente para limitar el acceso a su propia información, equipos, órdenes y presupuestos. Podrá tener otros roles, pero no representar a otro Cliente.
+- El cliente deberá proporcionar al menos un medio de contacto válido: correo electrónico o número de celular.
+- El correo electrónico o el número de celular registrado podrán utilizarse como identificador de acceso.
+- Para el primer ingreso se utilizará una credencial temporal que deberá ser reemplazada por una contraseña definida por el cliente.
+- El número de orden no se utilizará como contraseña.
 - El MVP no incluirá un registro público y autónomo de usuarios.
+- La integración automática con WhatsApp Business permanecerá fuera del alcance del MVP.
 
 **Alcance y límites:**
-Incluye la autenticación, administración de usuarios, roles, permisos y control de acceso. No administra la información propia de clientes, equipos, órdenes de trabajo, presupuestos o inventario; únicamente determina quién puede acceder a esas funcionalidades.
+Incluye la autenticación, administración de usuarios, roles, permisos y control de acceso. También contempla la creación controlada de cuentas con rol Cliente durante el proceso de recepción. No administra la información propia de clientes, equipos, órdenes de trabajo, presupuestos o inventario; únicamente gestiona la identidad de acceso y determina quién puede utilizar esas funcionalidades.
 
 ### 4.2. Clientes y equipos
 
@@ -69,12 +78,15 @@ Incluye la autenticación, administración de usuarios, roles, permisos y contro
 
 **Responsabilidades principales:**
 - Registrar, editar y consultar clientes.
+- Registrar los datos de contacto necesarios del cliente.
 - Registrar y consultar equipos asociados a cada cliente.
 - Mantener la relación entre cliente y equipo.
+- Mantener la vinculación entre el cliente y su cuenta de acceso con rol Cliente.
 - Permitir consultar el historial de reparaciones asociado a un equipo o cliente a partir de las órdenes registradas.
 
 **Dependencias:**
 - Depende de Autenticación, usuarios y roles para controlar el acceso según permisos.
+- Utiliza la cuenta de acceso gestionada por Autenticación, usuarios y roles para vincular al usuario autenticado con el cliente correspondiente.
 - Se relaciona con Órdenes de trabajo, ya que toda orden debe estar asociada a un cliente y a un equipo.
 - Utiliza la información histórica de las órdenes para consultar reparaciones anteriores.
 
@@ -83,9 +95,14 @@ Incluye la autenticación, administración de usuarios, roles, permisos y contro
 - Cada equipo deberá estar asociado a un único cliente.
 - El cliente solo podrá consultar su propia información, sus equipos y su historial de reparaciones.
 - El técnico solo podrá consultar la información necesaria de los equipos vinculados a sus órdenes asignadas.
+- Durante el registro de un cliente nuevo se deberá disponer de al menos un medio de contacto válido: correo electrónico o número de celular.
+- Cada cliente tendrá asociada una única cuenta de acceso con rol Cliente.
+- Si el cliente ya se encuentra registrado y posee una cuenta de acceso, se reutilizará esa misma cuenta para sus nuevos equipos y órdenes.
+- La cuenta vinculada permitirá identificar qué información, equipos, órdenes y presupuestos pertenecen al cliente autenticado.
+- No se creará una cuenta nueva por cada equipo u orden de trabajo.
 
 **Alcance y límites:**
-Incluye la administración de clientes, equipos y la relación entre ambos, junto con la consulta de reparaciones anteriores. No gestiona el ciclo operativo de una reparación, presupuestos ni inventario.
+Incluye la administración de clientes, sus datos de contacto, equipos, la relación entre ambos y la vinculación del cliente con su cuenta de acceso, junto con la consulta de reparaciones anteriores. La autenticación, las credenciales y los permisos de acceso continúan siendo responsabilidad del módulo Autenticación, usuarios y roles. No gestiona el ciclo operativo de una reparación, presupuestos ni inventario.
 
 ### 4.3. Órdenes de trabajo
 
@@ -252,6 +269,7 @@ Los permisos se aplicarán según los roles asignados a cada usuario. Cuando una
 
 Podrá:
 - Administrar usuarios, roles y permisos.
+- Crear y gestionar cuentas con roles Administrador, Recepcionista y Técnico.
 - Registrar, editar y consultar clientes y equipos.
 - Crear órdenes, administrar sus datos de recepción y asignar técnicos.
 - Consultar todas las órdenes.
@@ -265,6 +283,7 @@ Las tareas estrictamente técnicas de diagnóstico y reparación quedarán reser
 
 Podrá:
 - Registrar, editar y consultar clientes y equipos.
+- Crear una cuenta de acceso únicamente con rol Cliente al registrar a un cliente sin cuenta, o reutilizar la existente si ya posee una.
 - Crear órdenes de trabajo y registrar la información de recepción.
 - Asignar o cambiar el técnico responsable.
 - Consultar las órdenes.
@@ -273,7 +292,7 @@ Podrá:
 - Consultar el catálogo de repuestos y su disponibilidad.
 - Consultar indicadores operativos permitidos.
 
-No podrá realizar diagnóstico, reparación, modificar existencias ni aprobar presupuestos en nombre del cliente.
+No podrá realizar diagnóstico, reparación, modificar existencias, aprobar presupuestos en nombre del cliente ni crear usuarios con roles Administrador, Recepcionista o Técnico.
 
 ### Técnico
 
@@ -291,7 +310,7 @@ No podrá administrar clientes, equipos, usuarios, roles ni existencias generale
 ### Cliente
 
 Podrá:
-- Iniciar sesión y consultar sus propios datos.
+- Iniciar sesión utilizando su cuenta de acceso vinculada al registro de Cliente.
 - Consultar únicamente sus equipos y reparaciones.
 - Consultar el diagnóstico y los avances definidos como visibles.
 - Consultar sus propios presupuestos.

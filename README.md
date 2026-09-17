@@ -50,14 +50,16 @@ La definición detallada de responsabilidades, dependencias, reglas y permisos s
 
 FixHub contempla los siguientes roles:
 
-- **Administrador:** gestiona usuarios, permisos, inventario, órdenes y métricas del sistema.
-- **Recepcionista:** registra clientes y equipos, crea órdenes de trabajo y gestiona la recepción y entrega.
+- **Administrador:** gestiona usuarios, roles y permisos, administra el inventario, consulta las órdenes y visualiza métricas del sistema. La creación y gestión de cuentas con roles Administrador, Recepcionista y Técnico queda bajo su responsabilidad.
+- **Recepcionista:** registra clientes y equipos, crea órdenes de trabajo y gestiona la recepción y entrega. Durante el registro de un cliente sin cuenta deberá crearle una cuenta de acceso únicamente con rol Cliente; si ya posee una cuenta, deberá reutilizarla.
 - **Técnico:** consulta las órdenes asignadas, registra diagnósticos, tareas realizadas y repuestos utilizados.
 - **Cliente:** consulta el estado de sus reparaciones y puede aprobar o rechazar presupuestos.
 
 En servicios técnicos pequeños, una misma persona puede desempeñar más de una función dentro del negocio.
 
 Una cuenta de usuario podrá tener uno o varios roles simultáneamente. Cuando un usuario tenga más de un rol, acumulará los permisos correspondientes a cada uno.
+
+Cada Cliente deberá tener una única cuenta de acceso vinculada exclusivamente a su registro. Esa cuenta podrá tener otros roles, pero no podrá representar a otro Cliente y se reutilizará para futuros equipos y órdenes. No se contempla un registro público y autónomo de usuarios dentro del MVP.
 
 ## Flujo principal de una orden de trabajo
 
