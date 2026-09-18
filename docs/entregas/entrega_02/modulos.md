@@ -221,104 +221,7 @@ Incluye la creación, cálculo, consulta, publicación y aprobación o rechazo d
 **Alcance y límites:**
 Incluye la gestión de repuestos, existencias, consumos y movimientos de stock. No administra presupuestos ni el ciclo operativo de las órdenes, aunque se relaciona con ambos cuando se presupuestan o utilizan repuestos.
 
-## 5. Flujo funcional de las órdenes de trabajo
-
-Para el MVP, una orden de trabajo podrá utilizar los siguientes estados:
-
-- `RECIBIDA`
-- `EN_DIAGNOSTICO`
-- `PENDIENTE_APROBACION`
-- `APROBADA`
-- `EN_REPARACION`
-- `FINALIZADA`
-- `LISTA_PARA_RETIRAR`
-- `ENTREGADA`
-- `CANCELADA`
-
-La asignación de un técnico responsable no se considera un estado de la orden, sino una acción realizada sobre ella que deberá conservarse en la trazabilidad correspondiente.
-
-Los estados propios del presupuesto se administran dentro del módulo Presupuestos y aprobación y no se duplican como estados de la orden.
-
-### 5.1. Transiciones permitidas
-
-El flujo normal permite las siguientes transiciones:
-
-- `RECIBIDA` → `EN_DIAGNOSTICO`
-- `EN_DIAGNOSTICO` → `PENDIENTE_APROBACION`, cuando la reparación requiere presupuesto.
-- `EN_DIAGNOSTICO` → `EN_REPARACION`, cuando la reparación no requiere presupuesto.
-- `PENDIENTE_APROBACION` → `APROBADA`, cuando el cliente aprueba el presupuesto.
-- `PENDIENTE_APROBACION` → `CANCELADA`, cuando el cliente rechace el presupuesto.
-- `APROBADA` → `EN_REPARACION`
-- `EN_REPARACION` → `FINALIZADA`
-- `FINALIZADA` → `LISTA_PARA_RETIRAR`
-- `LISTA_PARA_RETIRAR` → `ENTREGADA`
-
-La orden podrá pasar a `CANCELADA` desde `RECIBIDA`, `EN_DIAGNOSTICO`, `PENDIENTE_APROBACION` o `APROBADA`.
-
-Una vez iniciada la reparación, no se permitirá una cancelación normal dentro del alcance del MVP.
-
-Toda cancelación deberá registrar el usuario responsable, la fecha y el motivo correspondiente.
-
-`ENTREGADA` y `CANCELADA` se consideran estados finales.
-
-## 6. Permisos por rol
-
-Los permisos se aplicarán según los roles asignados a cada usuario. Cuando una cuenta posea más de un rol, acumulará los permisos correspondientes a todos ellos.
-
-### Administrador
-
-Podrá:
-- Administrar usuarios, roles y permisos.
-- Crear y gestionar cuentas con roles Administrador, Recepcionista y Técnico.
-- Registrar, editar y consultar clientes y equipos.
-- Crear órdenes, administrar sus datos de recepción y asignar técnicos.
-- Consultar todas las órdenes.
-- Gestionar y publicar presupuestos, pero no aprobarlos ni rechazarlos en nombre del cliente.
-- Administrar repuestos, entradas y ajustes de stock.
-- Consultar información general e indicadores del sistema.
-
-Las tareas estrictamente técnicas de diagnóstico y reparación quedarán reservadas al rol Técnico.
-
-### Recepcionista
-
-Podrá:
-- Registrar, editar y consultar clientes y equipos.
-- Crear una cuenta de acceso únicamente con rol Cliente al registrar a un cliente sin cuenta, o reutilizar la existente si ya posee una.
-- Crear órdenes de trabajo y registrar la información de recepción.
-- Asignar o cambiar el técnico responsable.
-- Consultar las órdenes.
-- Marcar órdenes como listas para retirar y registrar su entrega.
-- Crear, editar y publicar presupuestos.
-- Consultar el catálogo de repuestos y su disponibilidad.
-- Consultar indicadores operativos permitidos.
-
-No podrá realizar diagnóstico, reparación, modificar existencias, aprobar presupuestos en nombre del cliente ni crear usuarios con roles Administrador, Recepcionista o Técnico.
-
-### Técnico
-
-Podrá:
-- Consultar únicamente las órdenes que tenga asignadas.
-- Consultar la información necesaria del cliente y del equipo vinculados con esas órdenes.
-- Registrar o actualizar el diagnóstico.
-- Registrar tareas y observaciones técnicas.
-- Iniciar y finalizar la reparación.
-- Participar en la elaboración de presupuestos de sus órdenes asignadas.
-- Consultar repuestos y registrar consumos reales correspondientes a sus órdenes.
-
-No podrá administrar clientes, equipos, usuarios, roles ni existencias generales del inventario.
-
-### Cliente
-
-Podrá:
-- Iniciar sesión utilizando su cuenta de acceso vinculada al registro de Cliente.
-- Consultar únicamente sus equipos y reparaciones.
-- Consultar el diagnóstico y los avances definidos como visibles.
-- Consultar sus propios presupuestos.
-- Aprobar o rechazar únicamente sus propios presupuestos.
-
-No tendrá acceso a información administrativa, observaciones internas, inventario ni reparaciones pertenecientes a otros clientes.
-
-## 7. Dependencias entre módulos
+## 5. Dependencias entre módulos
 
 Los cinco módulos mantienen las siguientes relaciones principales:
 
@@ -330,7 +233,7 @@ Los cinco módulos mantienen las siguientes relaciones principales:
 
 Las dependencias no implican duplicar responsabilidades. Cada módulo conserva la responsabilidad sobre su propio proceso y comparte únicamente la información necesaria con los demás.
 
-## 8. Cobertura del MVP
+## 6. Cobertura del MVP
 
 La organización definida permite cubrir las funcionalidades establecidas para el MVP:
 
@@ -348,3 +251,52 @@ La organización definida permite cubrir las funcionalidades establecidas para e
 - Interfaz responsive → característica general de presentación y no módulo funcional independiente.
 
 De esta forma, los cinco módulos definidos cubren el MVP sin necesidad de crear módulos independientes para diagnóstico, historial, seguimiento del cliente o dashboard.
+
+## 7. Paquetes previstos del sistema
+
+A partir de los módulos funcionales definidos, se establece una organización inicial de los paquetes que se desarrollarán durante la implementación de FixHub. Esta estructura busca mantener agrupadas las responsabilidades relacionadas con cada área funcional del sistema y facilitar la organización del código.
+
+La definición presentada en esta etapa establece los paquetes principales previstos, sin detallar todavía las clases, controladores, servicios, repositorios, entidades o DTO que se implementarán posteriormente.
+
+### 7.1. Paquetes principales del backend
+
+Para el backend se prevé una organización por funcionalidad, manteniendo una correspondencia directa con los módulos definidos previamente.
+
+Los paquetes funcionales principales serán:
+
+- `auth`: autenticación, usuarios, roles, permisos y control de acceso.
+- `clientes`: gestión de clientes, datos de contacto, equipos asociados y vinculación con la cuenta de acceso.
+- `ordenes`: órdenes de trabajo, asignación de técnicos, diagnóstico, tareas, estados e historial.
+- `presupuestos`: creación, cálculo, consulta y aprobación o rechazo de presupuestos.
+- `inventario`: repuestos, existencias, entradas, ajustes, consumos y movimientos de stock.
+
+Esta organización permite mantener agrupados los componentes relacionados con una misma responsabilidad funcional y evita separar el proyecto únicamente por tipo de clase.
+
+### 7.2. Organización interna prevista del backend
+
+Dentro de cada paquete funcional, la implementación podrá organizarse en componentes específicos según la responsabilidad de cada elemento.
+
+De forma general, podrán utilizarse componentes como:
+
+- Controladores para recibir y responder las solicitudes de la API.
+- Servicios para concentrar la lógica de negocio.
+- Repositorios para acceder y persistir la información.
+- Entidades para representar los datos del dominio.
+- DTO para intercambiar información entre la API y los clientes del sistema.
+
+La definición concreta de clases y componentes se realizará durante la etapa de implementación, manteniendo la separación de responsabilidades establecida en los módulos funcionales.
+
+### 7.3. Organización prevista del frontend
+
+El frontend se organizará siguiendo las áreas funcionales definidas para el sistema, agrupando las interfaces y la lógica de presentación según las funcionalidades que representan.
+
+Las principales áreas previstas serán:
+
+- Autenticación y acceso.
+- Clientes y equipos.
+- Órdenes de trabajo.
+- Presupuestos.
+- Inventario.
+- Panel e indicadores.
+
+La estructura interna del frontend se definirá durante la implementación según las necesidades de las vistas, componentes y servicios utilizados. Esta organización buscará mantener una separación clara entre las distintas funcionalidades y facilitar el mantenimiento de la aplicación.
