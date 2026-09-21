@@ -283,6 +283,12 @@ Los estados `ENTREGADA` y `CANCELADA` se consideran estados finales.
 - Git
 - GitHub
 
+## Diseño de base de datos
+
+FixHub utiliza un modelo relacional con MySQL. Para la Segunda Entrega se documentaron el diagrama DER, el diccionario de datos y la justificación de las decisiones de modelado.
+
+La documentación completa se encuentra en [Diseño de la base de datos](docs/entregas/entrega_02/base_de_datos/bases_datos.md).
+
 ## Despliegue
 
 Para el despliegue se evaluarán servicios administrados compatibles con las tecnologías seleccionadas.
@@ -328,7 +334,7 @@ Quedan fuera del alcance inicial:
 
 Proyecto en etapa de diseño correspondiente al Trabajo Final Integrador de la Tecnicatura Universitaria en Programación a Distancia.
 
-Actualmente se encuentra en desarrollo la documentación de la Segunda Entrega. La definición de los módulos funcionales ya fue consolidada y documentada, mientras continúan el diseño de la base de datos y las restantes tareas de documentación previas al inicio de la implementación.
+La Segunda Entrega se encuentra en proceso de revisión y consolidación. Los módulos funcionales y el diseño de la base de datos ya están documentados, mientras continúan las restantes tareas documentales previas al inicio de la implementación.
 
 ## Instalación y ejecución
 
