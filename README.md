@@ -208,6 +208,35 @@ La asignación o cambio del técnico responsable deberá quedar registrada para 
 
 Los estados propios del presupuesto se gestionarán de manera independiente y no se duplicarán como estados de la orden de trabajo.
 
+### Diagrama de estados
+
+El siguiente diagrama representa las transiciones definidas para el ciclo de vida de una orden de trabajo dentro del alcance del MVP.
+
+```mermaid
+stateDiagram-v2
+    [*] --> RECIBIDA
+
+    RECIBIDA --> EN_DIAGNOSTICO
+    EN_DIAGNOSTICO --> PENDIENTE_APROBACION : requiere presupuesto
+    EN_DIAGNOSTICO --> EN_REPARACION : no requiere presupuesto
+
+    PENDIENTE_APROBACION --> APROBADA : cliente aprueba
+    PENDIENTE_APROBACION --> CANCELADA : cliente rechaza presupuesto
+    APROBADA --> EN_REPARACION
+
+    EN_REPARACION --> FINALIZADA
+    FINALIZADA --> LISTA_PARA_RETIRAR
+    LISTA_PARA_RETIRAR --> ENTREGADA
+
+    RECIBIDA --> CANCELADA : cancelación
+    EN_DIAGNOSTICO --> CANCELADA : cancelación
+    PENDIENTE_APROBACION --> CANCELADA : cancelación
+    APROBADA --> CANCELADA : cancelación
+
+    ENTREGADA --> [*]
+    CANCELADA --> [*]
+```
+
 ### Flujo sin presupuesto
 
 Cuando la reparación no requiere aprobación previa mediante presupuesto, el flujo será:
@@ -324,7 +353,7 @@ Quedan fuera del alcance inicial:
 
 - Damián Nogueira
 - Gabriel Etchegoyen
-- Manuel Galarza 
+- Manuel Galarza
 
 ## Tutor
 
@@ -334,7 +363,7 @@ Quedan fuera del alcance inicial:
 
 Proyecto en etapa de diseño correspondiente al Trabajo Final Integrador de la Tecnicatura Universitaria en Programación a Distancia.
 
-La Segunda Entrega se encuentra en proceso de revisión y consolidación. Los módulos funcionales y el diseño de la base de datos ya están documentados, mientras continúan las restantes tareas documentales previas al inicio de la implementación.
+La documentación correspondiente a la Segunda Entrega se encuentra completa y actualizada con las correcciones solicitadas durante la revisión de la tutora. Se encuentran documentados los módulos funcionales, el diseño de la base de datos y el flujo de estados de las órdenes de trabajo.
 
 ## Instalación y ejecución
 
