@@ -68,14 +68,12 @@ public class Repuesto {
         String codigo,
         String nombre,
         String descripcion,
-        Integer stockActual,
         Integer stockMinimo,
         BigDecimal precioReferencia
     ) {
         this.codigo = codigo;
         this.nombre = nombre;
         this.descripcion = descripcion;
-        this.stockActual = stockActual;
         this.stockMinimo = stockMinimo;
         this.precioReferencia = precioReferencia;
         this.activo = true;
