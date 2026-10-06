@@ -11,8 +11,6 @@ public interface RepuestoRepository extends JpaRepository<Repuesto, Long> {
 
     Optional<Repuesto> findByIdAndActivoTrue(Long id);
 
-    Optional<Repuesto> findByCodigoIgnoreCase(String codigo);
-
     boolean existsByCodigoIgnoreCase(String codigo);
 
     boolean existsByCodigoIgnoreCaseAndIdNot(String codigo, Long id);

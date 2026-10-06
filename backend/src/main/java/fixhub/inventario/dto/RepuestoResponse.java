@@ -10,7 +10,8 @@ public record RepuestoResponse(
     String descripcion,
     Integer stockActual,
     Integer stockMinimo,
-    BigDecimal precioReferencia,
+    BigDecimal precioCosto,
+    BigDecimal precioVenta,
     Boolean activo,
     LocalDateTime fechaCreacion,
     LocalDateTime fechaModificacion

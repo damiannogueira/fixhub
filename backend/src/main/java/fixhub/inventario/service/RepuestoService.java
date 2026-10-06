@@ -35,7 +35,8 @@ public class RepuestoService {
             request.nombre().trim(),
             normalizarTextoOpcional(request.descripcion()),
             request.stockMinimo(),
-            request.precioReferencia()
+            request.precioCosto(),
+            request.precioVenta()
         );
 
         return convertirAResponse(repuestoRepository.save(repuesto));
@@ -82,7 +83,8 @@ public class RepuestoService {
             normalizarTextoOpcional(request.descripcion())
         );
         repuesto.setStockMinimo(request.stockMinimo());
-        repuesto.setPrecioReferencia(request.precioReferencia());
+        repuesto.setPrecioCosto(request.precioCosto());
+        repuesto.setPrecioVenta(request.precioVenta());
 
         return convertirAResponse(repuestoRepository.save(repuesto));
     }
@@ -125,7 +127,8 @@ public class RepuestoService {
             repuesto.getDescripcion(),
             repuesto.getStockActual(),
             repuesto.getStockMinimo(),
-            repuesto.getPrecioReferencia(),
+            repuesto.getPrecioCosto(),
+            repuesto.getPrecioVenta(),
             repuesto.getActivo(),
             repuesto.getFechaCreacion(),
             repuesto.getFechaModificacion()

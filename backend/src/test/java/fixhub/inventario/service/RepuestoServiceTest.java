@@ -39,6 +39,7 @@ class RepuestoServiceTest {
             " Pantalla 15 pulgadas ",
             " Pantalla compatible ",
             2,
+            new BigDecimal("80000.00"),
             new BigDecimal("125000.00")
         );
 
@@ -55,6 +56,13 @@ class RepuestoServiceTest {
         assertThat(response.descripcion()).isEqualTo("Pantalla compatible");
         assertThat(response.stockActual()).isZero();
         assertThat(response.stockMinimo()).isEqualTo(2);
+
+        assertThat(response.precioCosto())
+            .isEqualByComparingTo("80000.00");
+
+        assertThat(response.precioVenta())
+            .isEqualByComparingTo("125000.00");
+
         assertThat(response.activo()).isTrue();
 
         ArgumentCaptor<Repuesto> captor =
@@ -72,7 +80,8 @@ class RepuestoServiceTest {
             "Pantalla",
             null,
             2,
-            null
+            new BigDecimal("80000.00"),
+            new BigDecimal("125000.00")
         );
 
         when(repuestoRepository.existsByCodigoIgnoreCase("REP-001"))
@@ -102,7 +111,8 @@ class RepuestoServiceTest {
             "Pantalla",
             null,
             2,
-            null
+            new BigDecimal("80000.00"),
+            new BigDecimal("125000.00")
         );
 
         when(repuestoRepository.findByIdAndActivoTrue(1L))

@@ -109,6 +109,7 @@ class RepuestoRepositoryTest {
             nombre,
             null,
             stockMinimo,
+            new BigDecimal("80.00"),
             new BigDecimal("100.00")
         );
 

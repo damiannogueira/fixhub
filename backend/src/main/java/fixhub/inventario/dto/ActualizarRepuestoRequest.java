@@ -18,15 +18,19 @@ public record ActualizarRepuestoRequest(
     @Size(max = 120)
     String nombre,
 
-    @Size(max = 500)
     String descripcion,
 
     @NotNull
     @PositiveOrZero
     Integer stockMinimo,
 
+    @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
-    BigDecimal precioReferencia
+    BigDecimal precioCosto,
+
+    @NotNull
+    @DecimalMin(value = "0.0", inclusive = true)
+    BigDecimal precioVenta
 
 ) {
 }

@@ -12,6 +12,7 @@ import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -37,7 +38,7 @@ public class Repuesto {
     @Column(nullable = false, length = 120)
     private String nombre;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String descripcion;
 
     @PositiveOrZero
@@ -48,9 +49,15 @@ public class Repuesto {
     @Column(name = "stock_minimo", nullable = false)
     private Integer stockMinimo = 0;
 
+    @NotNull
     @DecimalMin(value = "0.0", inclusive = true)
-    @Column(name = "precio_referencia", precision = 12, scale = 2)
-    private BigDecimal precioReferencia;
+    @Column(name = "precio_costo", nullable = false, precision = 12, scale = 2)
+    private BigDecimal precioCosto;
+
+    @NotNull
+    @DecimalMin(value = "0.0", inclusive = true)
+    @Column(name = "precio_venta", nullable = false, precision = 12, scale = 2)
+    private BigDecimal precioVenta;
 
     @Column(nullable = false)
     private Boolean activo = true;
@@ -69,13 +76,15 @@ public class Repuesto {
         String nombre,
         String descripcion,
         Integer stockMinimo,
-        BigDecimal precioReferencia
+        BigDecimal precioCosto,
+        BigDecimal precioVenta
     ) {
         this.codigo = codigo;
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.stockMinimo = stockMinimo;
-        this.precioReferencia = precioReferencia;
+        this.precioCosto = precioCosto;
+        this.precioVenta = precioVenta;
         this.activo = true;
     }
 
@@ -135,12 +144,20 @@ public class Repuesto {
         this.stockMinimo = stockMinimo;
     }
 
-    public BigDecimal getPrecioReferencia() {
-        return precioReferencia;
+    public BigDecimal getPrecioCosto() {
+        return precioCosto;
     }
 
-    public void setPrecioReferencia(BigDecimal precioReferencia) {
-        this.precioReferencia = precioReferencia;
+    public void setPrecioCosto(BigDecimal precioCosto) {
+        this.precioCosto = precioCosto;
+    }
+
+    public BigDecimal getPrecioVenta() {
+        return precioVenta;
+    }
+
+    public void setPrecioVenta(BigDecimal precioVenta) {
+        this.precioVenta = precioVenta;
     }
 
     public Boolean getActivo() {
