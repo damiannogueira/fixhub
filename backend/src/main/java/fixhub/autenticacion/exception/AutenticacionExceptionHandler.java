@@ -22,4 +22,32 @@ public class AutenticacionExceptionHandler {
 
         return problem;
     }
+
+    @ExceptionHandler(ClaveActualIncorrectaException.class)
+    public ProblemDetail manejarClaveActualIncorrecta(
+        ClaveActualIncorrectaException exception
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_REQUEST,
+            exception.getMessage()
+        );
+
+        problem.setTitle("Clave actual incorrecta");
+
+        return problem;
+    }
+
+    @ExceptionHandler(UsuarioNoEncontradoException.class)
+    public ProblemDetail manejarUsuarioNoEncontrado(
+        UsuarioNoEncontradoException exception
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.NOT_FOUND,
+            exception.getMessage()
+        );
+
+        problem.setTitle("Usuario no encontrado");
+
+        return problem;
+    }
 }

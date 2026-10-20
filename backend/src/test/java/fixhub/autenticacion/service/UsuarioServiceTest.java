@@ -9,6 +9,9 @@ import fixhub.autenticacion.exception.IdentificadorUsuarioDuplicadoException;
 import fixhub.autenticacion.exception.RolNoEncontradoException;
 import fixhub.autenticacion.repository.RolRepository;
 import fixhub.autenticacion.repository.UsuarioRepository;
+import fixhub.autenticacion.dto.CambiarClaveRequest;
+import fixhub.autenticacion.exception.ClaveActualIncorrectaException;
+import fixhub.autenticacion.exception.UsuarioNoEncontradoException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -172,5 +175,108 @@ class UsuarioServiceTest {
 
         verify(passwordEncoder, never()).encode(any());
         verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    void debeCambiarClaveYDesactivarCambioObligatorio() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashAnterior",
+            "usuario@fixhub.com",
+            null
+        );
+
+        CambiarClaveRequest request =
+            new CambiarClaveRequest(
+                "ClaveTemporal123",
+                "NuevaClave456",
+                "NuevaClave456"
+            );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        when(
+            passwordEncoder.matches(
+                "ClaveTemporal123",
+                "$2a$10$hashAnterior"
+            )
+        ).thenReturn(true);
+
+        when(passwordEncoder.encode("NuevaClave456"))
+            .thenReturn("$2a$10$hashNuevo");
+
+        usuarioService.cambiarClave(42L, request);
+
+        assertThat(usuario.getPasswordHash())
+            .isEqualTo("$2a$10$hashNuevo");
+
+        assertThat(usuario.isRequiereCambioClave())
+            .isFalse();
+
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void noDebeCambiarClaveSiLaActualEsIncorrecta() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashAnterior",
+            "usuario@fixhub.com",
+            null
+        );
+
+        CambiarClaveRequest request =
+            new CambiarClaveRequest(
+                "ClaveIncorrecta",
+                "NuevaClave456",
+                "NuevaClave456"
+            );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        when(
+            passwordEncoder.matches(
+                "ClaveIncorrecta",
+                "$2a$10$hashAnterior"
+            )
+        ).thenReturn(false);
+
+        assertThatThrownBy(
+            () -> usuarioService.cambiarClave(42L, request)
+        )
+            .isInstanceOf(
+                ClaveActualIncorrectaException.class
+            )
+            .hasMessage("La clave actual es incorrecta");
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+    }
+
+    @Test
+    void noDebeCambiarClaveSiElUsuarioNoExiste() {
+        CambiarClaveRequest request =
+            new CambiarClaveRequest(
+                "ClaveTemporal123",
+                "NuevaClave456",
+                "NuevaClave456"
+            );
+
+        when(usuarioRepository.findById(99L))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+            () -> usuarioService.cambiarClave(99L, request)
+        )
+            .isInstanceOf(
+                UsuarioNoEncontradoException.class
+            )
+            .hasMessageContaining("99");
+
+        verify(passwordEncoder, never()).matches(any(), any());
+        verify(passwordEncoder, never()).encode(any());
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
     }
 }

@@ -9,6 +9,9 @@ import fixhub.autenticacion.exception.IdentificadorUsuarioDuplicadoException;
 import fixhub.autenticacion.exception.RolNoEncontradoException;
 import fixhub.autenticacion.repository.RolRepository;
 import fixhub.autenticacion.repository.UsuarioRepository;
+import fixhub.autenticacion.dto.CambiarClaveRequest;
+import fixhub.autenticacion.exception.ClaveActualIncorrectaException;
+import fixhub.autenticacion.exception.UsuarioNoEncontradoException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +60,34 @@ public class UsuarioService {
             usuarioRepository.save(usuario);
 
         return convertirAResponse(usuarioGuardado);
+    }
+
+    @Transactional
+    public void cambiarClave(
+        Long usuarioId,
+        CambiarClaveRequest request
+    ) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+            .orElseThrow(
+                () -> new UsuarioNoEncontradoException(usuarioId)
+            );
+
+        boolean claveActualValida = passwordEncoder.matches(
+            request.claveActual(),
+            usuario.getPasswordHash()
+        );
+
+        if (!claveActualValida) {
+            throw new ClaveActualIncorrectaException();
+        }
+
+        String nuevoPasswordHash =
+            passwordEncoder.encode(request.claveNueva());
+
+        usuario.setPasswordHash(nuevoPasswordHash);
+        usuario.setRequiereCambioClave(false);
+
+        usuarioRepository.save(usuario);
     }
 
     private void validarIdentificadoresDisponibles(
