@@ -10,6 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.persistence.EntityManager;
+import org.hibernate.Hibernate;
+
+import java.util.List;
+
 @SpringBootTest
 @Transactional
 class UsuarioRepositoryTest {
@@ -19,6 +24,9 @@ class UsuarioRepositoryTest {
 
     @Autowired
     private RolRepository rolRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void debeBuscarUsuarioPorEmailSinDistinguirMayusculas() {
@@ -106,5 +114,89 @@ class UsuarioRepositoryTest {
             email,
             telefono
         );
+    }
+
+    @Test
+    void debeListarUsuariosActivosEInactivosOrdenadosPorId() {
+        Rol rolAdministrador = rolRepository.saveAndFlush(
+            new Rol(NombreRol.ADMINISTRADOR)
+        );
+
+        Rol rolTecnico = rolRepository.saveAndFlush(
+            new Rol(NombreRol.TECNICO)
+        );
+
+        Usuario administrador = crearUsuario(
+            "admin@fixhub.com",
+            null
+        );
+
+        administrador.agregarRol(rolAdministrador);
+
+        Usuario tecnico = crearUsuario(
+            "tecnico@fixhub.com",
+            null
+        );
+
+        tecnico.agregarRol(rolTecnico);
+        tecnico.setActivo(false);
+
+        usuarioRepository.saveAndFlush(administrador);
+        usuarioRepository.saveAndFlush(tecnico);
+
+        entityManager.clear();
+
+        List<Usuario> resultado =
+            usuarioRepository.findAllByOrderByIdAsc();
+
+        assertThat(resultado)
+            .extracting(Usuario::getEmail)
+            .containsExactly(
+                "admin@fixhub.com",
+                "tecnico@fixhub.com"
+            );
+
+        assertThat(resultado)
+            .extracting(Usuario::isActivo)
+            .containsExactly(true, false);
+
+        assertThat(resultado)
+            .allSatisfy(usuario ->
+                assertThat(Hibernate.isInitialized(usuario.getRoles()))
+                    .isTrue()
+            );
+    }
+
+    @Test
+    void debeBuscarUsuarioPorIdYCargarSusRoles() {
+        Rol rolCliente = rolRepository.saveAndFlush(
+            new Rol(NombreRol.CLIENTE)
+        );
+
+        Usuario usuario = crearUsuario(
+            "cliente@fixhub.com",
+            null
+        );
+
+        usuario.agregarRol(rolCliente);
+
+        Usuario guardado =
+            usuarioRepository.saveAndFlush(usuario);
+
+        Long usuarioId = guardado.getId();
+
+        entityManager.clear();
+
+        var resultado = usuarioRepository.findById(usuarioId);
+
+        assertThat(resultado).isPresent();
+
+        assertThat(
+            Hibernate.isInitialized(resultado.get().getRoles())
+        ).isTrue();
+
+        assertThat(resultado.get().getRoles())
+            .extracting(Rol::getNombre)
+            .containsExactly(NombreRol.CLIENTE);
     }
 }

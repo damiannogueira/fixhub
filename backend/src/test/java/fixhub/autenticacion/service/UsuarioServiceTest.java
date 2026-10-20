@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -175,6 +176,92 @@ class UsuarioServiceTest {
 
         verify(passwordEncoder, never()).encode(any());
         verify(usuarioRepository, never()).save(any(Usuario.class));
+    }
+
+    @Test
+    void debeListarUsuariosConSusRoles() {
+        Usuario administrador = new Usuario(
+            "$2a$10$hashAdministrador",
+            "admin@fixhub.com",
+            null
+        );
+
+        administrador.agregarRol(
+            new Rol(NombreRol.ADMINISTRADOR)
+        );
+
+        Usuario tecnico = new Usuario(
+            "$2a$10$hashTecnico",
+            "tecnico@fixhub.com",
+            "+5493415551234"
+        );
+
+        tecnico.agregarRol(
+            new Rol(NombreRol.TECNICO)
+        );
+
+        when(usuarioRepository.findAllByOrderByIdAsc())
+            .thenReturn(List.of(administrador, tecnico));
+
+        List<UsuarioResponse> resultado =
+            usuarioService.listar();
+
+        assertThat(resultado).hasSize(2);
+
+        assertThat(resultado)
+            .extracting(UsuarioResponse::email)
+            .containsExactly(
+                "admin@fixhub.com",
+                "tecnico@fixhub.com"
+            );
+
+        assertThat(resultado.get(0).roles())
+            .containsExactly(NombreRol.ADMINISTRADOR);
+
+        assertThat(resultado.get(1).roles())
+            .containsExactly(NombreRol.TECNICO);
+    }
+
+    @Test
+    void debeBuscarUsuarioPorIdConSusRoles() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            "+5493415551234"
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.CLIENTE)
+        );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        UsuarioResponse resultado =
+            usuarioService.buscarPorId(42L);
+
+        assertThat(resultado.email())
+            .isEqualTo("usuario@fixhub.com");
+
+        assertThat(resultado.telefono())
+            .isEqualTo("+5493415551234");
+
+        assertThat(resultado.activo()).isTrue();
+
+        assertThat(resultado.roles())
+            .containsExactly(NombreRol.CLIENTE);
+    }
+
+    @Test
+    void debeLanzarExcepcionAlBuscarUsuarioInexistente() {
+        when(usuarioRepository.findById(99L))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+            () -> usuarioService.buscarPorId(99L)
+        )
+            .isInstanceOf(UsuarioNoEncontradoException.class)
+            .hasMessageContaining("99");
     }
 
     @Test

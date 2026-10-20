@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.List;
 
 @Service
 public class UsuarioService {
@@ -60,6 +61,23 @@ public class UsuarioService {
             usuarioRepository.save(usuario);
 
         return convertirAResponse(usuarioGuardado);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponse> listar() {
+        return usuarioRepository.findAllByOrderByIdAsc().stream()
+            .map(this::convertirAResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioResponse buscarPorId(Long id) {
+        Usuario usuario = usuarioRepository.findById(id)
+            .orElseThrow(
+                () -> new UsuarioNoEncontradoException(id)
+            );
+
+        return convertirAResponse(usuario);
     }
 
     @Transactional
