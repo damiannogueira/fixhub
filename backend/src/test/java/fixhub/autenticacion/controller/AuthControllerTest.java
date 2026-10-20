@@ -222,4 +222,34 @@ class AuthControllerTest {
 
         verifyNoInteractions(usuarioService);
     }
+
+    @Test
+    void debeBloquearOtrosEndpointsSiRequiereCambioClave() throws Exception {
+        mockMvc.perform(
+                get("/api/repuestos")
+                    .with(jwt().jwt(token -> token
+                        .subject("42")
+                        .claim("requiereCambioClave", true)
+                    ))
+            )
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.title")
+                .value("Cambio de clave requerido"))
+            .andExpect(jsonPath("$.detail")
+                .value(
+                    "Debe cambiar la clave temporal antes de continuar"
+                ));
+    }
+
+    @Test
+    void debePermitirOtrosEndpointsSiNoRequiereCambioClave() throws Exception {
+        mockMvc.perform(
+                get("/api/repuestos")
+                    .with(jwt().jwt(token -> token
+                        .subject("42")
+                        .claim("requiereCambioClave", false)
+                    ))
+            )
+            .andExpect(status().isOk());
+    }
 }
