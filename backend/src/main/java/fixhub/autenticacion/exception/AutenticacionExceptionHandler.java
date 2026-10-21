@@ -64,4 +64,34 @@ public class AutenticacionExceptionHandler {
 
         return problem;
     }
+
+    @ExceptionHandler(
+        IdentificadorUsuarioDuplicadoException.class
+    )
+    public ProblemDetail manejarIdentificadorDuplicado(
+        IdentificadorUsuarioDuplicadoException exception
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            exception.getMessage()
+        );
+
+        problem.setTitle("Identificador ya registrado");
+
+        return problem;
+    }
+
+    @ExceptionHandler(RolNoEncontradoException.class)
+    public ProblemDetail manejarRolNoEncontrado(
+        RolNoEncontradoException exception
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.NOT_FOUND,
+            exception.getMessage()
+        );
+
+        problem.setTitle("Rol no encontrado");
+
+        return problem;
+    }
 }

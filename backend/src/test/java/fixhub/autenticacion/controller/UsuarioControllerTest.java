@@ -24,6 +24,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import fixhub.autenticacion.dto.CrearUsuarioRequest;
+import fixhub.autenticacion.exception.IdentificadorUsuarioDuplicadoException;
+import org.springframework.http.MediaType;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 import fixhub.autenticacion.exception.UsuarioSinRolesException;
 
@@ -469,6 +475,172 @@ class UsuarioControllerTest {
         verify(usuarioService).quitarRol(
             42L,
             NombreRol.CLIENTE
+        );
+    }
+
+    @Test
+    void administradorDebePoderCrearUsuario()
+        throws Exception {
+
+        UsuarioResponse response = crearUsuarioResponse();
+
+        when(
+            usuarioService.crear(
+                any(CrearUsuarioRequest.class)
+            )
+        ).thenReturn(response);
+
+        mockMvc.perform(
+                post("/api/usuarios")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "email": "usuario@fixhub.com",
+                            "telefono": "+5493415551234",
+                            "claveTemporal": "ClaveTemporal123",
+                            "roles": ["TECNICO"]
+                        }
+                        """)
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(42))
+            .andExpect(
+                jsonPath("$.email")
+                    .value("usuario@fixhub.com")
+            )
+            .andExpect(
+                jsonPath("$.roles[0]")
+                    .value("TECNICO")
+            );
+
+        verify(usuarioService).crear(
+            any(CrearUsuarioRequest.class)
+        );
+    }
+
+    @Test
+    void usuarioSinRolAdministradorNoDebeCrearUsuarios()
+        throws Exception {
+
+        mockMvc.perform(
+                post("/api/usuarios")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("2")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_TECNICO"
+                            )
+                        )
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "email": "usuario@fixhub.com",
+                            "claveTemporal": "ClaveTemporal123",
+                            "roles": ["TECNICO"]
+                        }
+                        """)
+            )
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(usuarioService);
+    }
+
+    @Test
+    void noDebeCrearUsuarioConDatosInvalidos()
+        throws Exception {
+
+        mockMvc.perform(
+                post("/api/usuarios")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{}")
+            )
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(usuarioService);
+    }
+
+    @Test
+    void debeResponderConflictConIdentificadorDuplicado()
+        throws Exception {
+
+        when(
+            usuarioService.crear(
+                any(CrearUsuarioRequest.class)
+            )
+        ).thenThrow(
+            new IdentificadorUsuarioDuplicadoException(
+                "usuario@fixhub.com"
+            )
+        );
+
+        mockMvc.perform(
+                post("/api/usuarios")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "email": "usuario@fixhub.com",
+                            "claveTemporal": "ClaveTemporal123",
+                            "roles": ["TECNICO"]
+                        }
+                        """)
+            )
+            .andExpect(status().isConflict())
+            .andExpect(
+                jsonPath("$.title")
+                    .value("Identificador ya registrado")
+            );
+
+        verify(usuarioService).crear(
+            any(CrearUsuarioRequest.class)
         );
     }
 }

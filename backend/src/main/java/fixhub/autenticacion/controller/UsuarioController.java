@@ -12,6 +12,11 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import fixhub.autenticacion.entity.NombreRol;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import fixhub.autenticacion.dto.CrearUsuarioRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
@@ -23,6 +28,18 @@ public class UsuarioController {
 
     public UsuarioController(UsuarioService usuarioService) {
         this.usuarioService = usuarioService;
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<UsuarioResponse> crear(
+        @Valid @RequestBody CrearUsuarioRequest request
+    ) {
+        UsuarioResponse usuario = usuarioService.crear(request);
+
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(usuario);
     }
 
     @GetMapping
