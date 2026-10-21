@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.security.authentication.DisabledException;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -251,5 +252,36 @@ class AuthControllerTest {
                     ))
             )
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void noDebePermitirLoginDeUsuarioDesactivado()
+        throws Exception {
+
+        when(
+            autenticacionService.login(any(LoginRequest.class))
+        ).thenThrow(
+            new DisabledException("Usuario desactivado")
+        );
+
+        mockMvc.perform(
+                post("/api/auth/login")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "identificador": "usuario@fixhub.com",
+                            "clave": "ClaveCorrecta123"
+                        }
+                        """)
+            )
+            .andExpect(status().isUnauthorized())
+            .andExpect(
+                jsonPath("$.title")
+                    .value("Credenciales inválidas")
+            );
+
+        verify(
+            autenticacionService
+        ).login(any(LoginRequest.class));
     }
 }

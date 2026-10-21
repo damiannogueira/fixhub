@@ -26,6 +26,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.springframework.security.authentication.DisabledException;
+
 @ExtendWith(MockitoExtension.class)
 class AutenticacionServiceTest {
 
@@ -139,6 +141,30 @@ class AutenticacionServiceTest {
             () -> autenticacionService.login(request)
         )
             .isInstanceOf(BadCredentialsException.class);
+
+        verify(jwtService, never())
+            .generarToken(any(UsuarioPrincipal.class));
+    }
+
+    @Test
+    void noDebeGenerarTokenSiElUsuarioEstaDesactivado() {
+        LoginRequest request = new LoginRequest(
+            "usuario@fixhub.com",
+            "ClaveCorrecta123"
+        );
+
+        when(
+            authenticationManager.authenticate(
+                any(Authentication.class)
+            )
+        ).thenThrow(
+            new DisabledException("Usuario desactivado")
+        );
+
+        assertThatThrownBy(
+            () -> autenticacionService.login(request)
+        )
+            .isInstanceOf(DisabledException.class);
 
         verify(jwtService, never())
             .generarToken(any(UsuarioPrincipal.class));

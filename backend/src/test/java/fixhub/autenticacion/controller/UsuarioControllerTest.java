@@ -23,6 +23,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -189,5 +190,119 @@ class UsuarioControllerTest {
             LocalDateTime.of(2026, 10, 20, 12, 0),
             Set.of(NombreRol.TECNICO)
         );
+    }
+
+    @Test
+    void administradorDebePoderDesactivarUsuario()
+        throws Exception {
+
+        mockMvc.perform(
+                patch("/api/usuarios/42/desactivar")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isNoContent());
+
+        verify(usuarioService).desactivar(42L);
+    }
+
+    @Test
+    void administradorDebePoderActivarUsuario()
+        throws Exception {
+
+        mockMvc.perform(
+                patch("/api/usuarios/42/activar")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isNoContent());
+
+        verify(usuarioService).activar(42L);
+    }
+
+    @Test
+    void usuarioSinRolAdministradorNoDebeDesactivarUsuarios()
+        throws Exception {
+
+        mockMvc.perform(
+                patch("/api/usuarios/42/desactivar")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("2")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_TECNICO"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(usuarioService);
+    }
+
+    @Test
+    void debeResponderNotFoundAlDesactivarUsuarioInexistente()
+        throws Exception {
+
+        org.mockito.Mockito.doThrow(
+            new UsuarioNoEncontradoException(99L)
+        )
+            .when(usuarioService)
+            .desactivar(99L);
+
+        mockMvc.perform(
+                patch("/api/usuarios/99/desactivar")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isNotFound())
+            .andExpect(
+                jsonPath("$.title")
+                    .value("Usuario no encontrado")
+            );
+
+        verify(usuarioService).desactivar(99L);
     }
 }

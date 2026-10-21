@@ -72,12 +72,25 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public UsuarioResponse buscarPorId(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-            .orElseThrow(
-                () -> new UsuarioNoEncontradoException(id)
-            );
+        Usuario usuario = buscarEntidadPorId(id);
 
         return convertirAResponse(usuario);
+    }
+
+    @Transactional
+    public void desactivar(Long id) {
+        Usuario usuario = buscarEntidadPorId(id);
+
+        usuario.setActivo(false);
+        usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public void activar(Long id) {
+        Usuario usuario = buscarEntidadPorId(id);
+
+        usuario.setActivo(true);
+        usuarioRepository.save(usuario);
     }
 
     @Transactional
@@ -85,10 +98,7 @@ public class UsuarioService {
         Long usuarioId,
         CambiarClaveRequest request
     ) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-            .orElseThrow(
-                () -> new UsuarioNoEncontradoException(usuarioId)
-            );
+        Usuario usuario = buscarEntidadPorId(usuarioId);
 
         boolean claveActualValida = passwordEncoder.matches(
             request.claveActual(),
@@ -137,6 +147,13 @@ public class UsuarioService {
         return rolRepository.findByNombre(nombreRol)
             .orElseThrow(
                 () -> new RolNoEncontradoException(nombreRol)
+            );
+    }
+
+    private Usuario buscarEntidadPorId(Long id) {
+        return usuarioRepository.findById(id)
+            .orElseThrow(
+                () -> new UsuarioNoEncontradoException(id)
             );
     }
 

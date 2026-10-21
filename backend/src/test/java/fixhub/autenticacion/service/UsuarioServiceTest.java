@@ -265,6 +265,72 @@ class UsuarioServiceTest {
     }
 
     @Test
+    void debeDesactivarUsuario() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        usuarioService.desactivar(42L);
+
+        assertThat(usuario.isActivo()).isFalse();
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void debeActivarUsuario() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        usuario.setActivo(false);
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        usuarioService.activar(42L);
+
+        assertThat(usuario.isActivo()).isTrue();
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void noDebeDesactivarUsuarioInexistente() {
+        when(usuarioRepository.findById(99L))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+            () -> usuarioService.desactivar(99L)
+        )
+            .isInstanceOf(UsuarioNoEncontradoException.class)
+            .hasMessageContaining("99");
+
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+    }
+
+    @Test
+    void noDebeActivarUsuarioInexistente() {
+        when(usuarioRepository.findById(99L))
+            .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+            () -> usuarioService.activar(99L)
+        )
+            .isInstanceOf(UsuarioNoEncontradoException.class)
+            .hasMessageContaining("99");
+
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+    }
+
+    @Test
     void debeCambiarClaveYDesactivarCambioObligatorio() {
         Usuario usuario = new Usuario(
             "$2a$10$hashAnterior",

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.List;
 
@@ -35,5 +36,25 @@ public class UsuarioController {
         return ResponseEntity.ok(
             usuarioService.buscarPorId(id)
         );
+    }
+
+    @PatchMapping("/{id}/desactivar")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Void> desactivar(
+        @PathVariable Long id
+    ) {
+        usuarioService.desactivar(id);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/activar")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Void> activar(
+        @PathVariable Long id
+    ) {
+        usuarioService.activar(id);
+
+        return ResponseEntity.noContent().build();
     }
 }
