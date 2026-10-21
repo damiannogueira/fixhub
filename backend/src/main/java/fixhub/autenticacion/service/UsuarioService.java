@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.List;
+import fixhub.autenticacion.exception.UsuarioSinRolesException;
 
 @Service
 public class UsuarioService {
@@ -91,6 +92,49 @@ public class UsuarioService {
 
         usuario.setActivo(true);
         usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public UsuarioResponse asignarRol(
+        Long usuarioId,
+        NombreRol nombreRol
+    ) {
+        Usuario usuario = buscarEntidadPorId(usuarioId);
+
+        if (!usuario.tieneRol(nombreRol)) {
+            Rol rol = buscarRol(nombreRol);
+
+            usuario.agregarRol(rol);
+            usuarioRepository.save(usuario);
+        }
+
+        return convertirAResponse(usuario);
+    }
+
+    @Transactional
+    public UsuarioResponse quitarRol(
+        Long usuarioId,
+        NombreRol nombreRol
+    ) {
+        Usuario usuario = buscarEntidadPorId(usuarioId);
+
+        Rol rolAsignado = usuario.getRoles().stream()
+            .filter(rol -> rol.getNombre() == nombreRol)
+            .findFirst()
+            .orElse(null);
+
+        if (rolAsignado == null) {
+            return convertirAResponse(usuario);
+        }
+
+        if (usuario.cantidadRoles() == 1) {
+            throw new UsuarioSinRolesException(usuarioId);
+        }
+
+        usuario.quitarRol(rolAsignado);
+        usuarioRepository.save(usuario);
+
+        return convertirAResponse(usuario);
     }
 
     @Transactional

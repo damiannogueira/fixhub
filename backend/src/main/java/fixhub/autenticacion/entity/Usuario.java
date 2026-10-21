@@ -96,6 +96,15 @@ public class Usuario {
         roles.remove(rol);
     }
 
+    public boolean tieneRol(NombreRol nombreRol) {
+        return roles.stream()
+            .anyMatch(rol -> rol.getNombre() == nombreRol);
+    }
+
+    public int cantidadRoles() {
+        return roles.size();
+    }
+
     private String normalizarEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;

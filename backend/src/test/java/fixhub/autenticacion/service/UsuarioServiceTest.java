@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import fixhub.autenticacion.exception.UsuarioSinRolesException;
 
 @ExtendWith(MockitoExtension.class)
 class UsuarioServiceTest {
@@ -429,6 +430,162 @@ class UsuarioServiceTest {
 
         verify(passwordEncoder, never()).matches(any(), any());
         verify(passwordEncoder, never()).encode(any());
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+    }
+
+    @Test
+    void debeAsignarRolAUsuario() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.CLIENTE)
+        );
+
+        Rol rolTecnico = new Rol(NombreRol.TECNICO);
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        when(rolRepository.findByNombre(NombreRol.TECNICO))
+            .thenReturn(Optional.of(rolTecnico));
+
+        UsuarioResponse resultado =
+            usuarioService.asignarRol(
+                42L,
+                NombreRol.TECNICO
+            );
+
+        assertThat(resultado.roles())
+            .containsExactlyInAnyOrder(
+                NombreRol.CLIENTE,
+                NombreRol.TECNICO
+            );
+
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void noDebeDuplicarRolYaAsignado() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.TECNICO)
+        );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        UsuarioResponse resultado =
+            usuarioService.asignarRol(
+                42L,
+                NombreRol.TECNICO
+            );
+
+        assertThat(resultado.roles())
+            .containsExactly(NombreRol.TECNICO);
+
+        verify(rolRepository, never())
+            .findByNombre(NombreRol.TECNICO);
+
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+    }
+
+    @Test
+    void debeQuitarRolSiElUsuarioTieneMasDeUno() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.CLIENTE)
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.TECNICO)
+        );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        UsuarioResponse resultado =
+            usuarioService.quitarRol(
+                42L,
+                NombreRol.TECNICO
+            );
+
+        assertThat(resultado.roles())
+            .containsExactly(NombreRol.CLIENTE);
+
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void noDebeQuitarElUltimoRolDelUsuario() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.CLIENTE)
+        );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        assertThatThrownBy(
+            () -> usuarioService.quitarRol(
+                42L,
+                NombreRol.CLIENTE
+            )
+        )
+            .isInstanceOf(UsuarioSinRolesException.class)
+            .hasMessageContaining("42");
+
+        assertThat(usuario.tieneRol(NombreRol.CLIENTE))
+            .isTrue();
+
+        verify(usuarioRepository, never())
+            .save(any(Usuario.class));
+    }
+
+    @Test
+    void quitarRolNoAsignadoNoDebeModificarUsuario() {
+        Usuario usuario = new Usuario(
+            "$2a$10$hashUsuario",
+            "usuario@fixhub.com",
+            null
+        );
+
+        usuario.agregarRol(
+            new Rol(NombreRol.CLIENTE)
+        );
+
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(usuario));
+
+        UsuarioResponse resultado =
+            usuarioService.quitarRol(
+                42L,
+                NombreRol.TECNICO
+            );
+
+        assertThat(resultado.roles())
+            .containsExactly(NombreRol.CLIENTE);
+
         verify(usuarioRepository, never())
             .save(any(Usuario.class));
     }

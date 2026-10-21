@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PatchMapping;
+import fixhub.autenticacion.entity.NombreRol;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import java.util.List;
 
@@ -56,5 +59,27 @@ public class UsuarioController {
         usuarioService.activar(id);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}/roles/{rol}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<UsuarioResponse> asignarRol(
+        @PathVariable Long id,
+        @PathVariable NombreRol rol
+    ) {
+        return ResponseEntity.ok(
+            usuarioService.asignarRol(id, rol)
+        );
+    }
+
+    @DeleteMapping("/{id}/roles/{rol}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<UsuarioResponse> quitarRol(
+        @PathVariable Long id,
+        @PathVariable NombreRol rol
+    ) {
+        return ResponseEntity.ok(
+            usuarioService.quitarRol(id, rol)
+        );
     }
 }

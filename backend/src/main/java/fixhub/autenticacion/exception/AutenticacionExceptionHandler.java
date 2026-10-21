@@ -50,4 +50,18 @@ public class AutenticacionExceptionHandler {
 
         return problem;
     }
+
+    @ExceptionHandler(UsuarioSinRolesException.class)
+    public ProblemDetail manejarUsuarioSinRoles(
+        UsuarioSinRolesException exception
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            exception.getMessage()
+        );
+
+        problem.setTitle("El usuario debe conservar al menos un rol");
+
+        return problem;
+    }
 }

@@ -25,6 +25,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
+import fixhub.autenticacion.exception.UsuarioSinRolesException;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 class UsuarioControllerTest {
@@ -304,5 +309,166 @@ class UsuarioControllerTest {
             );
 
         verify(usuarioService).desactivar(99L);
+    }
+
+    @Test
+    void administradorDebePoderAsignarRol()
+        throws Exception {
+
+        UsuarioResponse response = crearUsuarioResponse();
+
+        when(
+            usuarioService.asignarRol(
+                42L,
+                NombreRol.TECNICO
+            )
+        ).thenReturn(response);
+
+        mockMvc.perform(
+                put("/api/usuarios/42/roles/TECNICO")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(42))
+            .andExpect(
+                jsonPath("$.roles[0]")
+                    .value("TECNICO")
+            );
+
+        verify(usuarioService).asignarRol(
+            42L,
+            NombreRol.TECNICO
+        );
+    }
+
+    @Test
+    void administradorDebePoderQuitarRol()
+        throws Exception {
+
+        UsuarioResponse response = crearUsuarioResponse();
+
+        when(
+            usuarioService.quitarRol(
+                42L,
+                NombreRol.CLIENTE
+            )
+        ).thenReturn(response);
+
+        mockMvc.perform(
+                delete("/api/usuarios/42/roles/CLIENTE")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(42))
+            .andExpect(
+                jsonPath("$.roles[0]")
+                    .value("TECNICO")
+            );
+
+        verify(usuarioService).quitarRol(
+            42L,
+            NombreRol.CLIENTE
+        );
+    }
+
+    @Test
+    void usuarioSinRolAdministradorNoDebeAsignarRoles()
+        throws Exception {
+
+        mockMvc.perform(
+                put("/api/usuarios/42/roles/TECNICO")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("2")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_TECNICO"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(usuarioService);
+    }
+
+    @Test
+    void debeResponderConflictAlQuitarElUltimoRol()
+        throws Exception {
+
+        when(
+            usuarioService.quitarRol(
+                42L,
+                NombreRol.CLIENTE
+            )
+        ).thenThrow(
+            new UsuarioSinRolesException(42L)
+        );
+
+        mockMvc.perform(
+                delete("/api/usuarios/42/roles/CLIENTE")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("1")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_ADMINISTRADOR"
+                            )
+                        )
+                    )
+            )
+            .andExpect(status().isConflict())
+            .andExpect(
+                jsonPath("$.title").value(
+                    "El usuario debe conservar al menos un rol"
+                )
+            )
+            .andExpect(
+                jsonPath("$.detail").value(
+                    "No se puede quitar el último rol "
+                        + "del usuario con id 42"
+                )
+            );
+
+        verify(usuarioService).quitarRol(
+            42L,
+            NombreRol.CLIENTE
+        );
     }
 }
