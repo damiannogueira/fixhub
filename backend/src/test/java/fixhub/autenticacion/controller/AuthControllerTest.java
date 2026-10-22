@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -225,31 +226,60 @@ class AuthControllerTest {
     }
 
     @Test
-    void debeBloquearOtrosEndpointsSiRequiereCambioClave() throws Exception {
+    void debeBloquearOtrosEndpointsSiRequiereCambioClave()
+        throws Exception {
+
         mockMvc.perform(
                 get("/api/repuestos")
-                    .with(jwt().jwt(token -> token
-                        .subject("42")
-                        .claim("requiereCambioClave", true)
-                    ))
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("42")
+                            .claim(
+                                "requiereCambioClave",
+                                true
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_TECNICO"
+                            )
+                        )
+                    )
             )
             .andExpect(status().isForbidden())
-            .andExpect(jsonPath("$.title")
-                .value("Cambio de clave requerido"))
-            .andExpect(jsonPath("$.detail")
-                .value(
-                    "Debe cambiar la clave temporal antes de continuar"
-                ));
+            .andExpect(
+                jsonPath("$.title")
+                    .value("Cambio de clave requerido")
+            )
+            .andExpect(
+                jsonPath("$.detail")
+                    .value(
+                        "Debe cambiar la clave temporal "
+                            + "antes de continuar"
+                    )
+            );
     }
 
     @Test
-    void debePermitirOtrosEndpointsSiNoRequiereCambioClave() throws Exception {
+    void debePermitirOtrosEndpointsSiNoRequiereCambioClave()
+        throws Exception {
+
         mockMvc.perform(
                 get("/api/repuestos")
-                    .with(jwt().jwt(token -> token
-                        .subject("42")
-                        .claim("requiereCambioClave", false)
-                    ))
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("42")
+                            .claim(
+                                "requiereCambioClave",
+                                false
+                            )
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority(
+                                "ROLE_TECNICO"
+                            )
+                        )
+                    )
             )
             .andExpect(status().isOk());
     }
