@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ public class RepuestoController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public RepuestoResponse crear(
         @Valid @RequestBody CrearRepuestoRequest request
     ) {
@@ -38,6 +40,9 @@ public class RepuestoController {
     }
 
     @GetMapping
+    @PreAuthorize(
+        "hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')"
+    )
     public List<RepuestoResponse> listar(
         @RequestParam(required = false) String nombre
     ) {
@@ -45,16 +50,25 @@ public class RepuestoController {
     }
 
     @GetMapping("/stock-bajo")
+    @PreAuthorize(
+        "hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')"
+    )
     public List<RepuestoResponse> listarConStockBajo() {
         return repuestoService.listarConStockBajo();
     }
 
     @GetMapping("/{id}")
-    public RepuestoResponse buscarPorId(@PathVariable Long id) {
+    @PreAuthorize(
+        "hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')"
+    )
+    public RepuestoResponse buscarPorId(
+        @PathVariable Long id
+    ) {
         return repuestoService.buscarPorId(id);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public RepuestoResponse actualizar(
         @PathVariable Long id,
         @Valid @RequestBody ActualizarRepuestoRequest request
@@ -64,6 +78,7 @@ public class RepuestoController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public void desactivar(@PathVariable Long id) {
         repuestoService.desactivar(id);
     }
