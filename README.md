@@ -361,13 +361,57 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-Proyecto en etapa de diseño correspondiente al Trabajo Final Integrador de la Tecnicatura Universitaria en Programación a Distancia.
+La Segunda Entrega de diseño y documentación se encuentra completada. El proyecto inició la implementación del backend y actualmente cuenta con:
 
-La documentación correspondiente a la Segunda Entrega se encuentra completa y actualizada con las correcciones solicitadas durante la revisión de la tutora. Se encuentran documentados los módulos funcionales, el diseño de la base de datos y el flujo de estados de las órdenes de trabajo.
+- Base técnica de Spring Boot.
+- Autenticación, usuarios y roles.
+- Seguridad mediante JWT y cambio obligatorio de clave.
+- CRUD básico de repuestos con autorización por roles.
+
+Clientes y equipos será el próximo módulo a implementar. Órdenes de trabajo, presupuestos, inventario completo, dashboard y frontend continúan pendientes.
 
 ## Instalación y ejecución
 
-Las instrucciones de instalación, configuración y ejecución local se incorporarán a medida que se implemente el frontend, backend y la base de datos.
+### Requisitos
+
+- Java 25.
+- Maven Wrapper incluido en el repositorio.
+- MySQL.
+
+### Variables de entorno
+
+Para ejecutar el backend se deben configurar las siguientes variables obligatorias:
+
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `JWT_SECRET`: clave Base64 válida que represente al menos 32 bytes.
+
+También se encuentran disponibles las siguientes variables opcionales:
+
+- `JWT_EXPIRATION`
+- `BOOTSTRAP_ROLES_ENABLED`
+- `BOOTSTRAP_ADMIN_ENABLED`
+- `BOOTSTRAP_ADMIN_EMAIL`
+- `BOOTSTRAP_ADMIN_PASSWORD`
+
+### Windows PowerShell
+
+```powershell
+cd backend
+.\mvnw.cmd spring-boot:run
+.\mvnw.cmd test
+.\mvnw.cmd verify
+```
+
+### macOS y Linux
+
+```bash
+cd backend
+./mvnw spring-boot:run
+./mvnw test
+./mvnw verify
+```
 
 ## Trabajo Final Integrador
 
