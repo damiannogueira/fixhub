@@ -65,6 +65,47 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
+    public Usuario buscarEntidadPorId(Long id) {
+        return buscarUsuarioPorId(id);
+    }
+
+    @Transactional
+    public Usuario crearCuentaCliente(
+        String email,
+        String telefono,
+        String claveTemporal
+    ) {
+        String emailNormalizado = normalizarEmail(email);
+        String telefonoNormalizado = normalizarContacto(telefono);
+
+        validarIdentificadoresDisponibles(
+            emailNormalizado,
+            telefonoNormalizado
+        );
+
+        Usuario usuario = new Usuario(
+            passwordEncoder.encode(claveTemporal),
+            emailNormalizado,
+            telefonoNormalizado
+        );
+        // El rol se asigna desde el backend para que esta operación
+        // solo cree cuentas Cliente.
+        usuario.agregarRol(buscarRol(NombreRol.CLIENTE));
+
+        return usuarioRepository.save(usuario);
+    }
+
+    @Transactional
+    public Usuario asegurarRolCliente(Usuario usuario) {
+        if (!usuario.tieneRol(NombreRol.CLIENTE)) {
+            usuario.agregarRol(buscarRol(NombreRol.CLIENTE));
+            return usuarioRepository.save(usuario);
+        }
+
+        return usuario;
+    }
+
+    @Transactional(readOnly = true)
     public List<UsuarioResponse> listar() {
         return usuarioRepository.findAllByOrderByIdAsc().stream()
             .map(this::convertirAResponse)
@@ -73,14 +114,14 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public UsuarioResponse buscarPorId(Long id) {
-        Usuario usuario = buscarEntidadPorId(id);
+        Usuario usuario = buscarUsuarioPorId(id);
 
         return convertirAResponse(usuario);
     }
 
     @Transactional
     public void desactivar(Long id) {
-        Usuario usuario = buscarEntidadPorId(id);
+        Usuario usuario = buscarUsuarioPorId(id);
 
         usuario.setActivo(false);
         usuarioRepository.save(usuario);
@@ -88,7 +129,7 @@ public class UsuarioService {
 
     @Transactional
     public void activar(Long id) {
-        Usuario usuario = buscarEntidadPorId(id);
+        Usuario usuario = buscarUsuarioPorId(id);
 
         usuario.setActivo(true);
         usuarioRepository.save(usuario);
@@ -99,7 +140,7 @@ public class UsuarioService {
         Long usuarioId,
         NombreRol nombreRol
     ) {
-        Usuario usuario = buscarEntidadPorId(usuarioId);
+        Usuario usuario = buscarUsuarioPorId(usuarioId);
 
         if (!usuario.tieneRol(nombreRol)) {
             Rol rol = buscarRol(nombreRol);
@@ -116,7 +157,7 @@ public class UsuarioService {
         Long usuarioId,
         NombreRol nombreRol
     ) {
-        Usuario usuario = buscarEntidadPorId(usuarioId);
+        Usuario usuario = buscarUsuarioPorId(usuarioId);
 
         Rol rolAsignado = usuario.getRoles().stream()
             .filter(rol -> rol.getNombre() == nombreRol)
@@ -142,7 +183,7 @@ public class UsuarioService {
         Long usuarioId,
         CambiarClaveRequest request
     ) {
-        Usuario usuario = buscarEntidadPorId(usuarioId);
+        Usuario usuario = buscarUsuarioPorId(usuarioId);
 
         boolean claveActualValida = passwordEncoder.matches(
             request.claveActual(),
@@ -194,7 +235,7 @@ public class UsuarioService {
             );
     }
 
-    private Usuario buscarEntidadPorId(Long id) {
+    private Usuario buscarUsuarioPorId(Long id) {
         return usuarioRepository.findById(id)
             .orElseThrow(
                 () -> new UsuarioNoEncontradoException(id)

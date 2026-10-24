@@ -366,9 +366,10 @@ La Segunda Entrega de diseño y documentación se encuentra completada. El proye
 - Base técnica de Spring Boot.
 - Autenticación, usuarios y roles.
 - Seguridad mediante JWT y cambio obligatorio de clave.
+- Gestión de clientes y equipos con acceso propio del Cliente.
 - CRUD básico de repuestos con autorización por roles.
 
-Clientes y equipos será el próximo módulo a implementar. Órdenes de trabajo, presupuestos, inventario completo, dashboard y frontend continúan pendientes.
+Órdenes de trabajo será el próximo módulo a implementar. Presupuestos, inventario completo, dashboard y frontend continúan pendientes.
 
 ## Instalación y ejecución
 
