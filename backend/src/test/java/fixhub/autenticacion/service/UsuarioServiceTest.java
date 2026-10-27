@@ -48,6 +48,61 @@ class UsuarioServiceTest {
     private UsuarioService usuarioService;
 
     @Test
+    void debeCrearCuentaClienteConRolImpuesto() {
+        Rol rolCliente = new Rol(NombreRol.CLIENTE);
+        when(passwordEncoder.encode("Temporal123"))
+            .thenReturn("hash-cliente");
+        when(rolRepository.findByNombre(NombreRol.CLIENTE))
+            .thenReturn(Optional.of(rolCliente));
+        when(usuarioRepository.save(any(Usuario.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Usuario usuario = usuarioService.crearCuentaCliente(
+            " CLIENTE@FIXHUB.COM ",
+            " +5493415551234 ",
+            "Temporal123"
+        );
+
+        assertThat(usuario.getEmail()).isEqualTo("cliente@fixhub.com");
+        assertThat(usuario.getTelefono()).isEqualTo("+5493415551234");
+        assertThat(usuario.getPasswordHash()).isEqualTo("hash-cliente");
+        assertThat(usuario.isRequiereCambioClave()).isTrue();
+        assertThat(usuario.getRoles())
+            .extracting(Rol::getNombre)
+            .containsExactly(NombreRol.CLIENTE);
+    }
+
+    @Test
+    void debeAgregarClienteConservandoOtrosRoles() {
+        Usuario usuario = new Usuario("hash", "admin@fixhub.com", null);
+        usuario.agregarRol(new Rol(NombreRol.ADMINISTRADOR));
+        when(rolRepository.findByNombre(NombreRol.CLIENTE))
+            .thenReturn(Optional.of(new Rol(NombreRol.CLIENTE)));
+        when(usuarioRepository.save(usuario)).thenReturn(usuario);
+
+        usuarioService.asegurarRolCliente(usuario);
+
+        assertThat(usuario.getRoles())
+            .extracting(Rol::getNombre)
+            .containsExactlyInAnyOrder(
+                NombreRol.ADMINISTRADOR,
+                NombreRol.CLIENTE
+            );
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void noDebeDuplicarRolCliente() {
+        Usuario usuario = new Usuario("hash", "cliente@fixhub.com", null);
+        usuario.agregarRol(new Rol(NombreRol.CLIENTE));
+
+        usuarioService.asegurarRolCliente(usuario);
+
+        assertThat(usuario.getRoles()).hasSize(1);
+        verify(usuarioRepository, never()).save(usuario);
+    }
+
+    @Test
     void debeCrearUsuarioNormalizandoDatosYCifrandoClave() {
         CrearUsuarioRequest request = new CrearUsuarioRequest(
             " USUARIO@FIXHUB.COM ",
