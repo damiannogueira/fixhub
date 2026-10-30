@@ -367,9 +367,12 @@ La Segunda Entrega de diseño y documentación se encuentra completada. El proye
 - Autenticación, usuarios y roles.
 - Seguridad mediante JWT y cambio obligatorio de clave.
 - Gestión de clientes y equipos con acceso propio del Cliente.
+- Núcleo de órdenes de trabajo, con estados, asignación de Técnicos,
+  cancelación y acceso propio.
+- Trazabilidad mínima de las operaciones realizadas sobre las órdenes.
 - CRUD básico de repuestos con autorización por roles.
 
-Órdenes de trabajo será el próximo módulo a implementar. Presupuestos, inventario completo, dashboard y frontend continúan pendientes.
+Diagnóstico, registros técnicos, presupuestos, inventario completo, dashboard y frontend continúan pendientes.
 
 ## Instalación y ejecución
 
