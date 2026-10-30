@@ -12,6 +12,7 @@ import fixhub.autenticacion.repository.UsuarioRepository;
 import fixhub.autenticacion.dto.CambiarClaveRequest;
 import fixhub.autenticacion.exception.ClaveActualIncorrectaException;
 import fixhub.autenticacion.exception.UsuarioNoEncontradoException;
+import fixhub.autenticacion.exception.UsuarioNoEsTecnicoException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -46,6 +47,29 @@ class UsuarioServiceTest {
 
     @InjectMocks
     private UsuarioService usuarioService;
+
+    @Test
+    void debeBuscarUsuarioConRolTecnico() {
+        Usuario tecnico = new Usuario("hash", "tecnico@fixhub.com", null);
+        tecnico.agregarRol(new Rol(NombreRol.TECNICO));
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(tecnico));
+
+        Usuario resultado = usuarioService.buscarTecnicoPorId(42L);
+
+        assertThat(resultado).isSameAs(tecnico);
+    }
+
+    @Test
+    void debeRechazarUsuarioQueNoEsTecnico() {
+        Usuario cliente = new Usuario("hash", "cliente@fixhub.com", null);
+        cliente.agregarRol(new Rol(NombreRol.CLIENTE));
+        when(usuarioRepository.findById(42L))
+            .thenReturn(Optional.of(cliente));
+
+        assertThatThrownBy(() -> usuarioService.buscarTecnicoPorId(42L))
+            .isInstanceOf(UsuarioNoEsTecnicoException.class);
+    }
 
     @Test
     void debeCrearCuentaClienteConRolImpuesto() {
