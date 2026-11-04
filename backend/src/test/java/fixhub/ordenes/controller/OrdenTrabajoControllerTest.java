@@ -10,6 +10,7 @@ import fixhub.ordenes.service.OrdenTrabajoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -87,6 +88,44 @@ class OrdenTrabajoControllerTest {
                         """)
             )
             .andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0, 30", "-1, 30", "3, 0", "3, -1"})
+    void crearConIdsNoPositivosDebeDevolverBadRequest(
+        long equipoId,
+        long tecnicoId
+    ) throws Exception {
+        mockMvc.perform(
+                post("/api/ordenes")
+                    .with(jwtConRol("RECEPCIONISTA", 20L))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {
+                            "equipoId": %d,
+                            "tecnicoId": %d,
+                            "problemaInicial": "No enciende"
+                        }
+                        """.formatted(equipoId, tecnicoId))
+            )
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(ordenTrabajoService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0, -1})
+    void asignarTecnicoNoPositivoDebeDevolverBadRequest(long tecnicoId)
+        throws Exception {
+        mockMvc.perform(
+                patch("/api/ordenes/7/tecnico")
+                    .with(jwtConRol("RECEPCIONISTA", 20L))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"tecnicoId\":%d}".formatted(tecnicoId))
+            )
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(ordenTrabajoService);
     }
 
     @Test

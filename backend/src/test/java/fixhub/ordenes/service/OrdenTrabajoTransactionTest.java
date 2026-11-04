@@ -14,7 +14,9 @@ import fixhub.ordenes.dto.CrearOrdenTrabajoRequest;
 import fixhub.ordenes.entity.EstadoOrden;
 import fixhub.ordenes.entity.NombreEstadoOrden;
 import fixhub.ordenes.repository.EstadoOrdenRepository;
+import fixhub.ordenes.repository.HistorialOrdenRepository;
 import fixhub.ordenes.repository.OrdenTrabajoRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -45,6 +47,20 @@ class OrdenTrabajoTransactionTest {
 
     @Autowired
     private EquipoRepository equipoRepository;
+
+    @Autowired
+    private HistorialOrdenRepository historialOrdenRepository;
+
+    @AfterEach
+    void limpiarDatosPersistidos() {
+        historialOrdenRepository.deleteAll();
+        ordenTrabajoRepository.deleteAll();
+        equipoRepository.deleteAll();
+        clienteRepository.deleteAll();
+        usuarioRepository.deleteAll();
+        rolRepository.deleteAll();
+        estadoOrdenRepository.deleteAll();
+    }
 
     @Test
     void fallaDeHistorialNoDebeDejarOrdenCreada() {
