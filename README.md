@@ -370,9 +370,13 @@ La Segunda Entrega de diseño y documentación se encuentra completada. El proye
 - Núcleo de órdenes de trabajo, con estados, asignación de Técnicos,
   cancelación y acceso propio.
 - Trazabilidad mínima de las operaciones realizadas sobre las órdenes.
+- Gestión del diagnóstico único de cada orden, con acceso controlado
+  según rol y propiedad.
+- Registro cronológico de tareas y observaciones técnicas durante la
+  reparación.
 - CRUD básico de repuestos con autorización por roles.
 
-Diagnóstico, registros técnicos, presupuestos, inventario completo, dashboard y frontend continúan pendientes.
+Presupuestos, inventario completo, dashboard y frontend continúan pendientes.
 
 ## Instalación y ejecución
 
