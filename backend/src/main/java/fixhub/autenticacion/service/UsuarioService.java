@@ -12,6 +12,7 @@ import fixhub.autenticacion.repository.UsuarioRepository;
 import fixhub.autenticacion.dto.CambiarClaveRequest;
 import fixhub.autenticacion.exception.ClaveActualIncorrectaException;
 import fixhub.autenticacion.exception.UsuarioNoEncontradoException;
+import fixhub.autenticacion.exception.UsuarioNoEsTecnicoException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +68,17 @@ public class UsuarioService {
     @Transactional(readOnly = true)
     public Usuario buscarEntidadPorId(Long id) {
         return buscarUsuarioPorId(id);
+    }
+
+    @Transactional(readOnly = true)
+    public Usuario buscarTecnicoPorId(Long usuarioId) {
+        Usuario usuario = buscarEntidadPorId(usuarioId);
+
+        if (!usuario.tieneRol(NombreRol.TECNICO)) {
+            throw new UsuarioNoEsTecnicoException(usuarioId);
+        }
+
+        return usuario;
     }
 
     @Transactional

@@ -101,7 +101,8 @@ public class EquipoService {
         return convertirAResponse(equipo);
     }
 
-    private Equipo buscarEntidadPorId(Long id) {
+    @Transactional(readOnly = true)
+    public Equipo buscarEntidadPorId(Long id) {
         return equipoRepository.findById(id)
             .orElseThrow(() -> new EquipoNoEncontradoException(id));
     }
