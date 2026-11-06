@@ -73,7 +73,8 @@ public class OrdenesExceptionHandler {
         TransicionEstadoInvalidaException.class,
         OrdenNoCancelableException.class,
         DiagnosticoYaRegistradoException.class,
-        EstadoOrdenInvalidoParaDiagnosticoException.class
+        EstadoOrdenInvalidoParaDiagnosticoException.class,
+        EstadoOrdenInvalidoParaRegistroTecnicoException.class
     })
     public ProblemDetail manejarConflicto(
         RuntimeException exception,
