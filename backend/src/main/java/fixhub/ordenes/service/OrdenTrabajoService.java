@@ -280,7 +280,8 @@ public class OrdenTrabajoService {
         return convertirAResponseCliente(orden);
     }
 
-    private OrdenTrabajo buscarEntidadPorId(Long id) {
+    @Transactional(readOnly = true)
+    public OrdenTrabajo buscarEntidadPorId(Long id) {
         return ordenTrabajoRepository.findById(id)
             .orElseThrow(() -> new OrdenTrabajoNoEncontradaException(id));
     }

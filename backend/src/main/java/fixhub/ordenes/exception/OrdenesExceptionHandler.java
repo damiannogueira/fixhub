@@ -29,6 +29,19 @@ public class OrdenesExceptionHandler {
         );
     }
 
+    @ExceptionHandler(DiagnosticoNoEncontradoException.class)
+    public ProblemDetail manejarDiagnosticoNoEncontrado(
+        DiagnosticoNoEncontradoException exception,
+        HttpServletRequest request
+    ) {
+        return crearProblem(
+            HttpStatus.NOT_FOUND,
+            "Diagnóstico no encontrado",
+            exception.getMessage(),
+            request
+        );
+    }
+
     @ExceptionHandler(EquipoNoEncontradoException.class)
     public ProblemDetail manejarEquipoNoEncontrado(
         EquipoNoEncontradoException exception,
@@ -58,7 +71,9 @@ public class OrdenesExceptionHandler {
     @ExceptionHandler({
         TecnicoRequeridoException.class,
         TransicionEstadoInvalidaException.class,
-        OrdenNoCancelableException.class
+        OrdenNoCancelableException.class,
+        DiagnosticoYaRegistradoException.class,
+        EstadoOrdenInvalidoParaDiagnosticoException.class
     })
     public ProblemDetail manejarConflicto(
         RuntimeException exception,
