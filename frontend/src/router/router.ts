@@ -1,10 +1,22 @@
 import { LoginPage } from '../pages/auth/LoginPage';
+import { ClientesPage } from '../pages/clientes/ClientesPage';
+import { DashboardPage } from '../pages/dashboard/DashboardPage';
+import { InventarioPage } from '../pages/inventario/InventarioPage';
+import { OrdenesPage } from '../pages/ordenes/OrdenesPage';
+import { PortalClientePage } from '../pages/portal-cliente/PortalClientePage';
+import { UsuariosPage } from '../pages/usuarios/UsuariosPage';
 
 // Definimos que cada ruta debe devolver SIEMPRE un HTMLElement
 type RouteHandler = () => HTMLElement;
 
 const routes: Record<string, RouteHandler> = {
   '/login': () => LoginPage.render(),
+  '/dashboard': () => DashboardPage.render(),
+  '/clientes': () => ClientesPage.render(),
+  '/ordenes': () => OrdenesPage.render(),
+  '/inventario': () => InventarioPage.render(),
+  '/usuarios': () => UsuariosPage.render(),
+  '/mis-ordenes': () => PortalClientePage.render(),
 };
 
 function getCurrentPath(): string {
