@@ -1,6 +1,12 @@
 # Normalización general de archivos de texto
 * text=auto
 
+# Archivos raíz y wrapper Unix: LF
+.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+backend/mvnw text eol=lf
+
 # Código fuente y configuración: LF
 *.java text eol=lf
 *.js text eol=lf
