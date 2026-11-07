@@ -1,0 +1,32 @@
+:root {
+  /* Colores de marca FixHub */
+  --color-primary: #1e3a5f;        /* Azul oscuro (Fix) */
+  --color-primary-hover: #152a45;  /* Azul más oscuro para hover */
+  --color-primary-light: #e8eef5;  /* Azul muy claro para fondos */
+  
+  --color-accent: #f26522;         /* Naranja (Hub) */
+  --color-accent-hover: #d9551a;   /* Naranja más oscuro para hover */
+  --color-accent-light: #fef3ee;   /* Naranja muy claro para fondos */
+  
+  /* Colores de estado */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  
+  /* Colores neutros */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  
+  /* Bordes y sombras */
+  --border-radius: 0.5rem;
+  --border-radius-lg: 0.75rem;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  
+  /* Tipografía */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
