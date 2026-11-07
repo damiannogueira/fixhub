@@ -152,15 +152,6 @@ public class DiagnosticoService {
         OrdenTrabajo orden,
         Usuario actor
     ) {
-        NombreEstadoOrden estado =
-            orden.getEstado().getNombre();
-
-        if (estado != NombreEstadoOrden.EN_DIAGNOSTICO) {
-            throw new EstadoOrdenInvalidoParaDiagnosticoException(
-                estado
-            );
-        }
-
         Usuario tecnicoAsignado = orden.getTecnico();
 
         if (
@@ -170,6 +161,15 @@ public class DiagnosticoService {
         ) {
             throw new AccessDeniedException(
                 "El diagnóstico debe gestionarlo el Técnico asignado"
+            );
+        }
+
+        NombreEstadoOrden estado =
+            orden.getEstado().getNombre();
+
+        if (estado != NombreEstadoOrden.EN_DIAGNOSTICO) {
+            throw new EstadoOrdenInvalidoParaDiagnosticoException(
+                estado
             );
         }
     }

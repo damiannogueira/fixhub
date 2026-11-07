@@ -102,16 +102,6 @@ public class RegistroTecnicoService {
         OrdenTrabajo orden,
         Usuario actor
     ) {
-        NombreEstadoOrden estado =
-            orden.getEstado().getNombre();
-
-        if (estado != NombreEstadoOrden.EN_REPARACION) {
-            throw new
-                EstadoOrdenInvalidoParaRegistroTecnicoException(
-                    estado
-                );
-        }
-
         Usuario tecnicoAsignado = orden.getTecnico();
 
         if (
@@ -122,6 +112,16 @@ public class RegistroTecnicoService {
             throw new AccessDeniedException(
                 "El registro debe realizarlo el Técnico asignado"
             );
+        }
+
+        NombreEstadoOrden estado =
+            orden.getEstado().getNombre();
+
+        if (estado != NombreEstadoOrden.EN_REPARACION) {
+            throw new
+                EstadoOrdenInvalidoParaRegistroTecnicoException(
+                    estado
+                );
         }
     }
 
