@@ -1,4 +1,6 @@
 import { router } from '../../router/router';
+import { clearSession } from '../../utils/authStorage';
+import { resetAuthState } from '../../utils/authState';
 
 type NavItem = {
   label: string;
@@ -53,7 +55,11 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
   `;
 
   layout.querySelector('.page-content')?.appendChild(content);
-  layout.querySelector('.logout-button')?.addEventListener('click', () => router.navigate('/login'));
+  layout.querySelector('.logout-button')?.addEventListener('click', () => {
+    clearSession();
+    resetAuthState();
+    router.navigate('/login');
+  });
   layout.querySelector('.menu-toggle')?.addEventListener('click', () => layout.classList.toggle('sidebar-open'));
   return layout;
 }

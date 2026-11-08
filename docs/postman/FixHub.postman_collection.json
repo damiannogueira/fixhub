@@ -1,0 +1,430 @@
+{
+  "info": {
+    "_postman_id": "fixhub-backend-collection",
+    "name": "FixHub Backend",
+    "description": "Colección de endpoints disponibles del backend de FixHub. Requiere importar también FixHub.postman_environment.json y ejecutar Login para guardar el JWT.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });"
+        ]
+      }
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "usuarioId", "value": "1" },
+    { "key": "clienteId", "value": "1" },
+    { "key": "equipoId", "value": "1" },
+    { "key": "ordenId", "value": "1" },
+    { "key": "tecnicoId", "value": "1" },
+    { "key": "repuestoId", "value": "1" }
+    ,{ "key": "adminPassword", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Autenticación",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.token);",
+                  "  pm.collectionVariables.set('usuarioId', body.usuarioId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificador\": \"admin@fixhub.local\",\n  \"clave\": \"{{adminPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Cambiar clave",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveActual\": \"clave-actual\",\n  \"claveNueva\": \"clave-nueva-segura\",\n  \"confirmacionClave\": \"clave-nueva-segura\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/cambiar-clave"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "item": [
+        {
+          "name": "Crear usuario",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tecnico@fixhub.local\",\n  \"telefono\": \"1122334455\",\n  \"claveTemporal\": \"FixHub-Temporal1!\",\n  \"roles\": [\"TECNICO\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/usuarios"
+          }
+        },
+        {
+          "name": "Listar usuarios",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/usuarios" }
+        },
+        {
+          "name": "Buscar usuario",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}" }
+        },
+        {
+          "name": "Desactivar usuario",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}/desactivar" }
+        },
+        {
+          "name": "Activar usuario",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}/activar" }
+        },
+        {
+          "name": "Asignar rol",
+          "request": { "method": "PUT", "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}/roles/TECNICO" }
+        },
+        {
+          "name": "Quitar rol",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}/roles/TECNICO" }
+        }
+      ]
+    },
+    {
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "Crear cliente con cuenta",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente@fixhub.local\",\n  \"telefono\": \"1199887766\",\n  \"claveTemporal\": \"FixHub-Cliente1!\",\n  \"nombre\": \"Ana\",\n  \"apellido\": \"García\",\n  \"dni\": \"30111222\",\n  \"direccion\": \"Av. Siempre Viva 123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/clientes/con-cuenta"
+          }
+        },
+        {
+          "name": "Crear cliente con usuario existente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuarioId\": {{usuarioId}},\n  \"nombre\": \"Ana\",\n  \"apellido\": \"García\",\n  \"dni\": \"30111222\",\n  \"direccion\": \"Av. Siempre Viva 123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/clientes/con-usuario"
+          }
+        },
+        {
+          "name": "Listar clientes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes" }
+        },
+        {
+          "name": "Buscar cliente propio",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me" }
+        },
+        {
+          "name": "Buscar cliente",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/{{clienteId}}" }
+        },
+        {
+          "name": "Actualizar cliente",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"García López\",\n  \"dni\": \"30111222\",\n  \"direccion\": \"Av. Siempre Viva 456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipos",
+      "item": [
+        {
+          "name": "Crear equipo",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"Notebook\",\n  \"marca\": \"Lenovo\",\n  \"modelo\": \"IdeaPad 3\",\n  \"numeroSerie\": \"SN-123456\",\n  \"observaciones\": \"Ingresa sin cargador\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}/equipos"
+          }
+        },
+        {
+          "name": "Listar equipos por cliente",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/{{clienteId}}/equipos" }
+        },
+        {
+          "name": "Buscar equipo",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/equipos/{{equipoId}}" }
+        },
+        {
+          "name": "Actualizar equipo",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"Notebook\",\n  \"marca\": \"Lenovo\",\n  \"modelo\": \"IdeaPad 3\",\n  \"numeroSerie\": \"SN-123456\",\n  \"observaciones\": \"Se actualizó el diagnóstico visual\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/equipos/{{equipoId}}"
+          }
+        },
+        {
+          "name": "Listar equipos propios",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/equipos" }
+        },
+        {
+          "name": "Buscar equipo propio",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/equipos/{{equipoId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Órdenes de trabajo",
+      "item": [
+        {
+          "name": "Crear orden",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"equipoId\": {{equipoId}},\n  \"tecnicoId\": {{tecnicoId}},\n  \"problemaInicial\": \"El equipo no enciende\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes"
+          }
+        },
+        {
+          "name": "Listar órdenes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes" }
+        },
+        {
+          "name": "Buscar orden",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/{{ordenId}}" }
+        },
+        {
+          "name": "Asignar técnico",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tecnicoId\": {{tecnicoId}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/tecnico"
+          }
+        },
+        {
+          "name": "Cambiar estado",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EN_DIAGNOSTICO\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/estado"
+          }
+        },
+        {
+          "name": "Cancelar orden",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"El cliente solicitó la cancelación\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/cancelacion"
+          }
+        },
+        {
+          "name": "Listar órdenes asignadas",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/me" }
+        },
+        {
+          "name": "Buscar orden asignada",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/me/{{ordenId}}" }
+        },
+        {
+          "name": "Listar órdenes propias",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/ordenes" }
+        },
+        {
+          "name": "Buscar orden propia",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/ordenes/{{ordenId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Diagnóstico y registros técnicos",
+      "item": [
+        {
+          "name": "Crear diagnóstico",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcionFalla\": \"Falla en la fuente de alimentación\",\n  \"tareasRequeridas\": \"Revisar fuente y componentes asociados\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/diagnostico"
+          }
+        },
+        {
+          "name": "Actualizar diagnóstico",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descripcionFalla\": \"Falla confirmada en la fuente\",\n  \"tareasRequeridas\": \"Reemplazar fuente y realizar pruebas\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/diagnostico"
+          }
+        },
+        {
+          "name": "Buscar diagnóstico",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/diagnostico" }
+        },
+        {
+          "name": "Buscar diagnóstico de orden asignada",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/me/{{ordenId}}/diagnostico" }
+        },
+        {
+          "name": "Buscar diagnóstico propio",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/ordenes/{{ordenId}}/diagnostico" }
+        },
+        {
+          "name": "Crear registro técnico",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tareaRealizada\": \"Se reemplazó la fuente de alimentación\",\n  \"observacion\": \"El equipo enciende correctamente\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/registros-tecnicos"
+          }
+        },
+        {
+          "name": "Listar registros técnicos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/registros-tecnicos" }
+        },
+        {
+          "name": "Listar registros de orden asignada",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/me/{{ordenId}}/registros-tecnicos" }
+        }
+      ]
+    },
+    {
+      "name": "Inventario",
+      "item": [
+        {
+          "name": "Crear repuesto",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"REP-001\",\n  \"nombre\": \"Fuente de alimentación\",\n  \"descripcion\": \"Fuente compatible con equipos de escritorio\",\n  \"stockMinimo\": 3,\n  \"precioCosto\": 25000.00,\n  \"precioVenta\": 40000.00\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/repuestos"
+          }
+        },
+        {
+          "name": "Listar repuestos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repuestos" }
+        },
+        {
+          "name": "Buscar repuestos por nombre",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repuestos?nombre=fuente" }
+        },
+        {
+          "name": "Listar stock bajo",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repuestos/stock-bajo" }
+        },
+        {
+          "name": "Buscar repuesto",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}" }
+        },
+        {
+          "name": "Actualizar repuesto",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"REP-001\",\n  \"nombre\": \"Fuente de alimentación actualizada\",\n  \"descripcion\": \"Fuente compatible con equipos de escritorio\",\n  \"stockMinimo\": 5,\n  \"precioCosto\": 26000.00,\n  \"precioVenta\": 42000.00\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}"
+          }
+        },
+        {
+          "name": "Desactivar repuesto",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}" }
+        }
+      ]
+    }
+  ]
+}

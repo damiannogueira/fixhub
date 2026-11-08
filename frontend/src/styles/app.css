@@ -42,6 +42,11 @@ td { padding: .9rem .75rem; border-bottom: 1px solid var(--color-border); white-
 .progress-list i { grid-column: 1 / -1; height: 7px; overflow: hidden; border-radius: 99px; background: var(--color-border); }
 .progress-list b { display: block; height: 100%; border-radius: inherit; background: var(--color-accent); }
 .toolbar { display: flex; gap: .75rem; margin-bottom: 1.25rem; }
+.table-state { min-height: 180px; }
+.form-panel { max-width: 720px; }
+.form-intro { margin-bottom: 1.25rem; }
+.user-form { display: grid; gap: 1rem; }
+.form-actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: .5rem; }
 .search-input { max-width: 360px; }.filter-select { max-width: 210px; }
 .state-box { display: grid; place-items: center; gap: .4rem; min-height: 220px; color: var(--color-text-muted); text-align: center; }
 .empty-icon { font-size: 2rem; color: var(--color-accent); }.state-box h3 { color: var(--color-text); }

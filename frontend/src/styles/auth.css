@@ -96,3 +96,18 @@
   width: 100%;
   margin-top: 0.5rem;
 }
+
+.form-alert {
+  padding: .75rem 1rem;
+  border: 1px solid #fecaca;
+  border-radius: var(--border-radius);
+  color: #b91c1c;
+  background: #fef2f2;
+  font-size: .875rem;
+}
+
+.form-alert-success {
+  border-color: #a7f3d0;
+  color: #047857;
+  background: #ecfdf5;
+}
