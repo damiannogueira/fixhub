@@ -1,9 +1,11 @@
 import { renderAppLayout } from '../../components/layout/AppLayout';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { crearUsuario } from '../../services/usuariosService';
+import { crearUsuario, crearUsuarioConCliente } from '../../services/usuariosService';
 import type { Rol } from '../../types/auth';
 import { router } from '../../router/router';
+import { hasAnyRole } from '../../utils/authState';
+import { NotFoundPage } from '../auth/NotFoundPage';
 
 const roles: Rol[] = [
   'ADMINISTRADOR',
@@ -14,14 +16,21 @@ const roles: Rol[] = [
 
 export const CrearUsuarioPage = {
   render(): HTMLElement {
+    const query = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+    const clientOnly = query.get('rol') === 'CLIENTE';
+    const returnPath = query.get('origen') === 'clientes' ? '/clientes' : '/usuarios';
+    const receptionist = hasAnyRole(['RECEPCIONISTA']) && !hasAnyRole(['ADMINISTRADOR']);
+    if (receptionist && !clientOnly) {
+      return NotFoundPage.render();
+    }
     const content = document.createElement('div');
     content.innerHTML = `
       <div class="page-heading">
         <div>
           <p class="muted">Accesos y permisos</p>
-          <h2>Crear usuario</h2>
+          <h2>${clientOnly ? 'Crear cliente' : 'Crear usuario'}</h2>
         </div>
-        <a class="btn btn-secondary" href="#/usuarios">Volver a usuarios</a>
+        <a class="btn btn-secondary" href="#${returnPath}">Volver</a>
       </div>
       <section class="panel form-panel">
         <p class="muted form-intro">Creá una cuenta y asignale un rol inicial.</p>
@@ -58,18 +67,38 @@ export const CrearUsuarioPage = {
       <label class="form-label" for="rol">Rol</label>
       <select id="rol" name="rol" class="form-input" required>
         <option value="">Seleccioná un rol</option>
-        ${roles.map((role) => `<option value="${role}">${formatRole(role)}</option>`).join('')}
+        ${roles.map((role) => `<option value="${role}" ${clientOnly && role === 'CLIENTE' ? 'selected' : ''}>${formatRole(role)}</option>`).join('')}
       </select>
     `;
     form.append(roleGroup);
+
+    const clientFields = document.createElement('div');
+    clientFields.className = 'client-fields';
+    clientFields.hidden = true;
+    clientFields.innerHTML = `
+      <p class="muted form-intro">Datos del cliente</p>
+      <div class="form-group"><label class="form-label" for="nombre">Nombre</label><input class="form-input" id="nombre" name="nombre" maxlength="255"></div>
+      <div class="form-group"><label class="form-label" for="apellido">Apellido</label><input class="form-input" id="apellido" name="apellido" maxlength="255"></div>
+      <div class="form-group"><label class="form-label" for="dni">DNI</label><input class="form-input" id="dni" name="dni" maxlength="255"></div>
+      <div class="form-group"><label class="form-label" for="direccion">Dirección</label><input class="form-input" id="direccion" name="direccion" maxlength="255"></div>
+    `;
+    form.append(clientFields);
+    const roleSelect = roleGroup.querySelector('#rol') as HTMLSelectElement;
+    if (clientOnly) {
+      roleSelect.disabled = true;
+      clientFields.hidden = false;
+    }
+    roleSelect.addEventListener('change', () => {
+      clientFields.hidden = roleSelect.value !== 'CLIENTE';
+    });
 
     const actions = document.createElement('div');
     actions.className = 'form-actions';
     actions.append(
       Button.render({ text: 'Cancelar', variant: 'secondary' }),
-      Button.render({ text: 'Crear usuario', type: 'submit' }),
+      Button.render({ text: clientOnly ? 'Crear cliente' : 'Crear usuario', type: 'submit' }),
     );
-    actions.querySelector('button')?.addEventListener('click', () => router.navigate('/usuarios'));
+    actions.querySelector('button')?.addEventListener('click', () => router.navigate(returnPath));
     form.append(actions);
 
     form.addEventListener('submit', async (event) => {
@@ -80,10 +109,15 @@ export const CrearUsuarioPage = {
       const email = String(values.get('email') ?? '').trim();
       const telefono = String(values.get('telefono') ?? '').trim();
       const claveTemporal = String(values.get('claveTemporal') ?? '');
-      const rol = String(values.get('rol') ?? '') as Rol;
+      const rol = (clientOnly ? 'CLIENTE' : String(values.get('rol') ?? '')) as Rol;
+      const nombre = String(values.get('nombre') ?? '').trim();
+      const apellido = String(values.get('apellido') ?? '').trim();
 
-      if ((!email && !telefono) || claveTemporal.length < 8 || !roles.includes(rol)) {
-        showMessage(form, 'Ingresá email o teléfono, una clave de al menos 8 caracteres y un rol.');
+      if ((!email && !telefono) || claveTemporal.length < 8 || !roles.includes(rol)
+        || (rol === 'CLIENTE' && (!nombre || !apellido))) {
+        showMessage(form, rol === 'CLIENTE'
+          ? 'Ingresá email o teléfono, una clave, un rol, nombre y apellido.'
+          : 'Ingresá email o teléfono, una clave de al menos 8 caracteres y un rol.');
         return;
       }
 
@@ -91,13 +125,26 @@ export const CrearUsuarioPage = {
       submit.disabled = true;
 
       try {
-        await crearUsuario({
+        const request = {
           ...(email ? { email } : {}),
           ...(telefono ? { telefono } : {}),
           claveTemporal,
           roles: [rol],
-        });
-        router.navigate('/usuarios');
+        };
+        if (rol === 'CLIENTE') {
+          await crearUsuarioConCliente({
+            ...request,
+            nombre,
+            apellido,
+            ...(String(values.get('dni') ?? '').trim()
+              ? { dni: String(values.get('dni')).trim() } : {}),
+            ...(String(values.get('direccion') ?? '').trim()
+              ? { direccion: String(values.get('direccion')).trim() } : {}),
+          });
+        } else {
+          await crearUsuario(request);
+        }
+        router.navigate(returnPath);
       } catch (error) {
         showMessage(form, error instanceof Error ? error.message : 'No se pudo crear el usuario.');
         submit.disabled = false;

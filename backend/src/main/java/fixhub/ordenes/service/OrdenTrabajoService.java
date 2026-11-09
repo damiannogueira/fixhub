@@ -297,6 +297,12 @@ public class OrdenTrabajoService {
         Usuario actor
     ) {
         NombreEstadoOrden origen = orden.getEstado().getNombre();
+        if (actor.tieneRol(NombreRol.ADMINISTRADOR)) {
+            if (destino == NombreEstadoOrden.CANCELADA) {
+                throw new TransicionEstadoInvalidaException(origen, destino);
+            }
+            return;
+        }
         boolean tecnica = esTransicionTecnica(origen, destino);
         boolean recepcion = esTransicionRecepcion(origen, destino);
 

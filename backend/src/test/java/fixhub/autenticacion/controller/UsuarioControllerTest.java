@@ -121,6 +121,29 @@ class UsuarioControllerTest {
     }
 
     @Test
+    void recepcionistaDebePoderListarTecnicosActivos() throws Exception {
+        when(usuarioService.listarTecnicos())
+            .thenReturn(List.of(crearUsuarioResponse()));
+
+        mockMvc.perform(
+                get("/api/usuarios/tecnicos")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("2")
+                            .claim("requiereCambioClave", false)
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority("ROLE_RECEPCIONISTA")
+                        )
+                    )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].roles[0]").value("TECNICO"));
+
+        verify(usuarioService).listarTecnicos();
+    }
+
+    @Test
     void usuarioSinRolAdministradorNoDebeListarUsuarios()
         throws Exception {
 

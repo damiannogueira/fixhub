@@ -5,6 +5,8 @@ import fixhub.autenticacion.service.UsuarioService;
 import fixhub.clientes.dto.ActualizarClienteRequest;
 import fixhub.clientes.dto.ClienteResponse;
 import fixhub.clientes.dto.CrearClienteConCuentaRequest;
+import fixhub.clientes.dto.CrearClienteConRolesRequest;
+import fixhub.autenticacion.dto.CrearUsuarioRequest;
 import fixhub.clientes.dto.CrearClienteConUsuarioRequest;
 import fixhub.clientes.entity.Cliente;
 import fixhub.clientes.exception.ClienteNoEncontradoException;
@@ -62,6 +64,28 @@ public class ClienteService {
 
         return guardarCliente(
             usuario,
+            request.nombre(),
+            request.apellido(),
+            request.dni(),
+            request.direccion()
+        );
+    }
+
+    @Transactional
+    public ClienteResponse crearConRoles(
+        CrearClienteConRolesRequest request
+    ) {
+        var usuarioResponse = usuarioService.crear(
+            new CrearUsuarioRequest(
+                request.email(),
+                request.telefono(),
+                request.claveTemporal(),
+                request.roles()
+            )
+        );
+
+        return guardarCliente(
+            usuarioService.buscarEntidadPorId(usuarioResponse.id()),
             request.nombre(),
             request.apellido(),
             request.dni(),

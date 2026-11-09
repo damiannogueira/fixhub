@@ -77,7 +77,7 @@ public class OrdenTrabajoController {
     }
 
     @PatchMapping("/ordenes/{id}/estado")
-    @PreAuthorize("hasAnyRole('TECNICO', 'RECEPCIONISTA')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'TECNICO', 'RECEPCIONISTA')")
     public ResponseEntity<OrdenTrabajoResponse> cambiarEstado(
         @PathVariable Long id,
         @Valid @RequestBody CambiarEstadoOrdenRequest request,

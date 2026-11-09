@@ -1,6 +1,6 @@
 import { LoginPage } from '../pages/auth/LoginPage';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage';
-import { ForbiddenPage } from '../pages/auth/ForbiddenPage';
+import { NotFoundPage } from '../pages/auth/NotFoundPage';
 import { ClientesPage } from '../pages/clientes/ClientesPage';
 import { DashboardPage } from '../pages/dashboard/DashboardPage';
 import { InventarioPage } from '../pages/inventario/InventarioPage';
@@ -8,6 +8,11 @@ import { OrdenesPage } from '../pages/ordenes/OrdenesPage';
 import { PortalClientePage } from '../pages/portal-cliente/PortalClientePage';
 import { UsuariosPage } from '../pages/usuarios/UsuariosPage';
 import { CrearUsuarioPage } from '../pages/usuarios/CrearUsuarioPage';
+import { EditarUsuarioPage } from '../pages/usuarios/EditarUsuarioPage';
+import { DetalleOrdenClientePage } from '../pages/portal-cliente/DetalleOrdenClientePage';
+import { MiCuentaPage } from '../pages/portal-cliente/MiCuentaPage';
+import { MisEquiposPage } from '../pages/portal-cliente/MisEquiposPage';
+import { ClienteDetallePage } from '../pages/clientes/ClienteDetallePage';
 import type { Rol } from '../types/auth';
 import { getAccessToken } from '../utils/authStorage';
 import { hasAnyRole, hasAuthenticatedSession, requiresPasswordChange } from '../utils/authState';
@@ -21,14 +26,20 @@ type Route = {
 
 const routes: Record<string, Route> = {
   '/login': { render: () => LoginPage.render(), public: true },
+  '/404': { render: () => NotFoundPage.render(), public: true },
   '/cambiar-clave': { render: () => ChangePasswordPage.render() },
-  '/dashboard': { render: () => DashboardPage.render() },
+  '/dashboard': { render: () => DashboardPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
   '/clientes': { render: () => ClientesPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+  '/clientes/detalle': { render: () => ClienteDetallePage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   '/ordenes': { render: () => OrdenesPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
   '/inventario': { render: () => InventarioPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
   '/usuarios': { render: () => UsuariosPage.render(), roles: ['ADMINISTRADOR'] },
-  '/usuarios/nuevo': { render: () => CrearUsuarioPage.render(), roles: ['ADMINISTRADOR'] },
+  '/usuarios/nuevo': { render: () => CrearUsuarioPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
+  '/usuarios/editar': { render: () => EditarUsuarioPage.render(), roles: ['ADMINISTRADOR'] },
   '/mis-ordenes': { render: () => PortalClientePage.render(), roles: ['CLIENTE'] },
+  '/mis-ordenes/detalle': { render: () => DetalleOrdenClientePage.render(), roles: ['CLIENTE'] },
+  '/mi-cuenta': { render: () => MiCuentaPage.render(), roles: ['CLIENTE'] },
+  '/mis-equipos': { render: () => MisEquiposPage.render(), roles: ['CLIENTE'] },
 };
 
 function getCurrentPath(): string {
@@ -38,17 +49,21 @@ function getCurrentPath(): string {
 
 function renderCurrentRoute(): HTMLElement {
   const path = getCurrentPath();
-  const route = routes[path];
+  const route = routes[path.split('?')[0]];
 
   if (!route) {
-    const errorDiv = document.createElement('div');
-    errorDiv.textContent = `Error: La ruta "${path}" no existe.`;
-    return errorDiv;
+    return NotFoundPage.render();
   }
 
   if (path === '/login' && getAccessToken()) {
-    navigate(requiresPasswordChange() ? '/cambiar-clave' : '/dashboard');
+    navigate(requiresPasswordChange() ? '/cambiar-clave' : getHomeRoute());
     return document.createElement('div');
+  }
+
+  function getHomeRoute(): string {
+    return hasAnyRole(['CLIENTE']) && !hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'])
+      ? '/mi-cuenta'
+      : '/dashboard';
   }
 
   if (!route.public && (!getAccessToken() || !hasAuthenticatedSession())) {
@@ -62,7 +77,8 @@ function renderCurrentRoute(): HTMLElement {
   }
 
   if (route.roles && !hasAnyRole(route.roles)) {
-    return ForbiddenPage.render();
+    navigate('/404');
+    return document.createElement('div');
   }
 
   return route.render();

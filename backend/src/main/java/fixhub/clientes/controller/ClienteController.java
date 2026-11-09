@@ -4,6 +4,7 @@ import fixhub.clientes.dto.ActualizarClienteRequest;
 import fixhub.clientes.dto.ClienteResponse;
 import fixhub.clientes.dto.CrearClienteConCuentaRequest;
 import fixhub.clientes.dto.CrearClienteConUsuarioRequest;
+import fixhub.clientes.dto.CrearClienteConRolesRequest;
 import fixhub.clientes.service.ClienteService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -47,6 +48,15 @@ public class ClienteController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(clienteService.crearConCuenta(request));
+    }
+
+    @PostMapping("/con-roles")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    public ResponseEntity<ClienteResponse> crearConRoles(
+        @Valid @RequestBody CrearClienteConRolesRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(clienteService.crearConRoles(request));
     }
 
     @GetMapping

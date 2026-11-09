@@ -1,6 +1,7 @@
 import { router } from '../../router/router';
 import { clearSession } from '../../utils/authStorage';
 import { resetAuthState } from '../../utils/authState';
+import { getAuthState } from '../../utils/authState';
 
 type NavItem = {
   label: string;
@@ -8,7 +9,7 @@ type NavItem = {
   icon: string;
 };
 
-const navItems: NavItem[] = [
+const managementNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: '▦' },
   { label: 'Clientes', path: '/clientes', icon: '◉' },
   { label: 'Órdenes', path: '/ordenes', icon: '▤' },
@@ -16,10 +17,24 @@ const navItems: NavItem[] = [
   { label: 'Usuarios', path: '/usuarios', icon: '♙' },
 ];
 
+const receptionistNavItems = managementNavItems.filter((item) => item.path !== '/usuarios');
+
+const clientNavItems: NavItem[] = [
+  { label: 'Mi cuenta', path: '/mi-cuenta', icon: '◉' },
+  { label: 'Mis equipos', path: '/mis-equipos', icon: '▣' },
+  { label: 'Mis reparaciones', path: '/mis-ordenes', icon: '▤' },
+];
+
 export function renderAppLayout(content: HTMLElement, title: string): HTMLElement {
   const layout = document.createElement('div');
   layout.className = 'app-layout';
   const currentPath = router.getCurrentPath();
+  const roles = getAuthState().roles;
+  const isClient = roles.includes('CLIENTE')
+    && !getAuthState().roles.some((role) => ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'].includes(role));
+  const isReceptionist = roles.includes('RECEPCIONISTA') && !roles.includes('ADMINISTRADOR');
+  const navItems = isClient ? clientNavItems : isReceptionist ? receptionistNavItems : managementNavItems;
+  const userLabel = isClient ? 'Cliente' : isReceptionist ? 'Recepcionista' : 'Usuario';
 
   layout.innerHTML = `
     <aside class="sidebar">
@@ -46,8 +61,8 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
           <h1 class="page-title">${title}</h1>
         </div>
         <div class="topbar-user">
-          <div class="avatar">AD</div>
-          <div><strong>Administrador</strong><small>Administrador</small></div>
+          <div class="avatar">${isClient ? 'CL' : 'US'}</div>
+          <div><strong>${userLabel}</strong><small>${userLabel}</small></div>
         </div>
       </header>
       <section class="page-content"></section>

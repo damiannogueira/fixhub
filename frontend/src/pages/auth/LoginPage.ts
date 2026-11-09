@@ -3,7 +3,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { router } from '../../router/router';
 import { login } from '../../services/authService';
-import { setAuthenticated } from '../../utils/authState';
+import { hasAnyRole, setAuthenticated } from '../../utils/authState';
 import { consumeAuthMessage } from '../../utils/authStorage';
 
 export const LoginPage = {
@@ -68,7 +68,11 @@ export const LoginPage = {
       login({ identificador: username, clave: password })
         .then((response) => {
           setAuthenticated(response);
-          router.navigate(response.requiereCambioClave ? '/cambiar-clave' : '/dashboard');
+          const isClientOnly = hasAnyRole(['CLIENTE'])
+            && !hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO']);
+          router.navigate(response.requiereCambioClave
+            ? '/cambiar-clave'
+            : isClientOnly ? '/mi-cuenta' : '/dashboard');
         })
         .catch((error: unknown) => {
           showMessage(form, error instanceof Error ? error.message : 'No se pudo iniciar sesión.');

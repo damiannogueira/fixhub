@@ -1,6 +1,7 @@
 package fixhub.autenticacion.service;
 
 import fixhub.autenticacion.dto.CrearUsuarioRequest;
+import fixhub.autenticacion.dto.ActualizarUsuarioRequest;
 import fixhub.autenticacion.dto.UsuarioResponse;
 import fixhub.autenticacion.entity.NombreRol;
 import fixhub.autenticacion.entity.Rol;
@@ -125,10 +126,54 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
+    public List<UsuarioResponse> listarTecnicos() {
+        return usuarioRepository.findAllByOrderByIdAsc().stream()
+            .filter(usuario -> usuario.isActivo())
+            .filter(usuario -> usuario.tieneRol(NombreRol.TECNICO))
+            .map(this::convertirAResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public UsuarioResponse buscarPorId(Long id) {
         Usuario usuario = buscarUsuarioPorId(id);
 
         return convertirAResponse(usuario);
+    }
+
+    @Transactional
+    public UsuarioResponse actualizar(
+        Long id,
+        ActualizarUsuarioRequest request
+    ) {
+        Usuario usuario = buscarUsuarioPorId(id);
+        String email = normalizarEmail(request.email());
+        String telefono = normalizarContacto(request.telefono());
+
+        validarIdentificadoresDisponiblesParaActualizacion(
+            id,
+            email,
+            telefono
+        );
+
+        usuario.setEmail(email);
+        usuario.setTelefono(telefono);
+        usuario.getRoles().clear();
+        buscarRoles(request.roles()).forEach(usuario::agregarRol);
+
+        if (request.claveTemporal() != null
+            && !request.claveTemporal().isBlank()) {
+            usuario.setPasswordHash(
+                passwordEncoder.encode(request.claveTemporal())
+            );
+            usuario.setRequiereCambioClave(true);
+        }
+
+        if (request.activo() != null) {
+            usuario.setActivo(request.activo());
+        }
+
+        return convertirAResponse(usuarioRepository.save(usuario));
     }
 
     @Transactional
@@ -231,6 +276,28 @@ public class UsuarioService {
                 && usuarioRepository.existsByTelefono(telefono)
         ) {
             throw new IdentificadorUsuarioDuplicadoException(telefono);
+        }
+    }
+
+    private void validarIdentificadoresDisponiblesParaActualizacion(
+        Long usuarioId,
+        String email,
+        String telefono
+    ) {
+        if (email != null) {
+            usuarioRepository.findByEmailIgnoreCase(email)
+                .filter(usuario -> !usuario.getId().equals(usuarioId))
+                .ifPresent(usuario -> {
+                    throw new IdentificadorUsuarioDuplicadoException(email);
+                });
+        }
+
+        if (telefono != null) {
+            usuarioRepository.findByTelefono(telefono)
+                .filter(usuario -> !usuario.getId().equals(usuarioId))
+                .ifPresent(usuario -> {
+                    throw new IdentificadorUsuarioDuplicadoException(telefono);
+                });
         }
     }
 
