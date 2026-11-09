@@ -1,4 +1,5 @@
 package fixhub.inventario.entity;
+import fixhub.inventario.exception.StockInsuficienteException;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -132,8 +133,42 @@ public class Repuesto {
         return stockActual;
     }
 
-    public void setStockActual(Integer stockActual) {
-        this.stockActual = stockActual;
+    public void agregarStock(Integer cantidad) {
+        if (cantidad == null || cantidad <= 0) {
+            throw new IllegalArgumentException(
+                "La cantidad de entrada debe ser positiva"
+            );
+        }
+
+        stockActual = Math.addExact(stockActual, cantidad);
+    }
+
+    public void ajustarStock(Integer nuevoStock) {
+        if (nuevoStock == null || nuevoStock < 0) {
+            throw new IllegalArgumentException(
+                "El stock no puede ser negativo"
+            );
+        }
+
+        stockActual = nuevoStock;
+    }
+
+    public void consumirStock(Integer cantidad) {
+        if (cantidad == null || cantidad <= 0) {
+            throw new IllegalArgumentException(
+                "La cantidad consumida debe ser positiva"
+            );
+        }
+
+        if (cantidad > stockActual) {
+            throw new StockInsuficienteException(
+                id,
+                stockActual,
+                cantidad
+            );
+        }
+
+        stockActual -= cantidad;
     }
 
     public Integer getStockMinimo() {

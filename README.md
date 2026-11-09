@@ -374,9 +374,16 @@ La Segunda Entrega de diseño y documentación se encuentra completada. El proye
   según rol y propiedad.
 - Registro cronológico de tareas y observaciones técnicas durante la
   reparación.
-- CRUD básico de repuestos con autorización por roles.
+- Gestión del catálogo de repuestos con autorización por roles.
 
-Presupuestos, inventario completo, dashboard y frontend continúan pendientes.
+- Gestión transaccional de existencias mediante entradas, ajustes y
+  consumos reales asociados a órdenes de trabajo.
+
+- Trazabilidad de las variaciones mediante movimientos de stock y
+  prevención de consumos que generen existencias negativas.
+
+Presupuestos, historial consultable completo, dashboard e integración
+funcional completa del frontend continúan pendientes.
 
 ## Instalación y ejecución
 

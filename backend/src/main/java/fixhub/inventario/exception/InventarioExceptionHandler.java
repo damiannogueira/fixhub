@@ -46,6 +46,58 @@ public class InventarioExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(StockInsuficienteException.class)
+    public ProblemDetail manejarStockInsuficiente(
+        StockInsuficienteException exception,
+        HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            exception.getMessage()
+        );
+
+        problem.setTitle("Stock insuficiente");
+        problem.setInstance(URI.create(request.getRequestURI()));
+
+        return problem;
+    }
+
+    @ExceptionHandler(AjusteStockSinCambiosException.class)
+    public ProblemDetail manejarAjusteSinCambios(
+        AjusteStockSinCambiosException exception,
+        HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            exception.getMessage()
+        );
+
+        problem.setTitle("El ajuste no modifica el stock");
+        problem.setInstance(URI.create(request.getRequestURI()));
+
+        return problem;
+    }
+
+    @ExceptionHandler(
+        EstadoOrdenInvalidoParaConsumoException.class
+    )
+    public ProblemDetail manejarEstadoInvalidoParaConsumo(
+        EstadoOrdenInvalidoParaConsumoException exception,
+        HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            exception.getMessage()
+        );
+
+        problem.setTitle(
+            "Estado inválido para registrar el consumo"
+        );
+        problem.setInstance(URI.create(request.getRequestURI()));
+
+        return problem;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail manejarValidacion(
         MethodArgumentNotValidException exception,

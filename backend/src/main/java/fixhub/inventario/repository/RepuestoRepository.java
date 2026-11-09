@@ -3,6 +3,9 @@ package fixhub.inventario.repository;
 import fixhub.inventario.entity.Repuesto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,4 +32,15 @@ public interface RepuestoRepository extends JpaRepository<Repuesto, Long> {
         ORDER BY r.stockActual ASC, r.nombre ASC
         """)
     List<Repuesto> findRepuestosConStockBajo();
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT r
+        FROM Repuesto r
+        WHERE r.id = :id
+            AND r.activo = true
+        """)
+    Optional<Repuesto> findActivoByIdForUpdate(
+        @Param("id") Long id
+    );
 }
