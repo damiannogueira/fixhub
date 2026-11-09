@@ -61,6 +61,12 @@ public class PresupuestoService {
             .map(this::convertir).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PresupuestoResponse> listarAsignados(Long tecnicoId) {
+        return presupuestoRepository.findAllByOrdenTecnicoIdOrderByFechaCreacionDesc(tecnicoId).stream()
+            .map(this::convertir).toList();
+    }
+
     @Transactional
     public PresupuestoResponse editar(Long id, CrearPresupuestoRequest request, Long actorId) {
         Presupuesto presupuesto = buscar(id); Usuario actor = usuarioService.buscarEntidadPorId(actorId);

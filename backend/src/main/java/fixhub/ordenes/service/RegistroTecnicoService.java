@@ -143,9 +143,17 @@ public class RegistroTecnicoService {
             registro.getId(),
             registro.getOrden().getId(),
             registro.getUsuario().getId(),
+            nombreUsuario(registro.getUsuario()),
             registro.getTareaRealizada(),
             registro.getObservacion(),
             registro.getFecha()
         );
+    }
+
+    private String nombreUsuario(fixhub.autenticacion.entity.Usuario usuario) {
+        if (usuario.getEmail() != null && !usuario.getEmail().isBlank()) {
+            return usuario.getEmail().split("@")[0];
+        }
+        return usuario.getTelefono();
     }
 }

@@ -1,9 +1,13 @@
-import { listarOrdenes } from './ordenesService';
+import { listarMisOrdenesTecnico, listarOrdenes } from './ordenesService';
 import { listarRepuestos } from './repuestosService';
+import { getAuthState } from '../utils/authState';
 
 export async function obtenerDatosDashboard() {
   const [orders, parts] = await Promise.all([
-    listarOrdenes(),
+    getAuthState().roles.includes('TECNICO')
+      && !getAuthState().roles.some((role) => ['ADMINISTRADOR', 'RECEPCIONISTA'].includes(role))
+      ? listarMisOrdenesTecnico()
+      : listarOrdenes(),
     listarRepuestos(),
   ]);
 

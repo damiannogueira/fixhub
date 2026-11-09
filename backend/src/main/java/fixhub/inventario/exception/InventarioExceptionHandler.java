@@ -46,6 +46,20 @@ public class InventarioExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler({StockInsuficienteException.class, ConsumoNoPermitidoException.class})
+    public ProblemDetail manejarOperacionInvalida(
+        RuntimeException exception,
+        HttpServletRequest request
+    ) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            exception.getMessage()
+        );
+        problem.setTitle("Operación de inventario no permitida");
+        problem.setInstance(URI.create(request.getRequestURI()));
+        return problem;
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail manejarValidacion(
         MethodArgumentNotValidException exception,

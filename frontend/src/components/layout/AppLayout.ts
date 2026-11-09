@@ -20,6 +20,13 @@ const managementNavItems: NavItem[] = [
 
 const receptionistNavItems = managementNavItems.filter((item) => item.path !== '/usuarios');
 
+const technicianNavItems: NavItem[] = [
+  { label: 'Dashboard', path: '/dashboard', icon: '▦' },
+  { label: 'Mis órdenes', path: '/ordenes', icon: '▤' },
+  { label: 'Presupuestos', path: '/presupuestos', icon: '$' },
+  { label: 'Repuestos', path: '/inventario', icon: '◫' },
+];
+
 const clientNavItems: NavItem[] = [
   { label: 'Mi cuenta', path: '/mi-cuenta', icon: '◉' },
   { label: 'Mis equipos', path: '/mis-equipos', icon: '▣' },
@@ -35,8 +42,26 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
   const isClient = roles.includes('CLIENTE')
     && !getAuthState().roles.some((role) => ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'].includes(role));
   const isReceptionist = roles.includes('RECEPCIONISTA') && !roles.includes('ADMINISTRADOR');
-  const navItems = isClient ? clientNavItems : isReceptionist ? receptionistNavItems : managementNavItems;
-  const userLabel = isClient ? 'Cliente' : isReceptionist ? 'Recepcionista' : 'Usuario';
+  const isTechnician = roles.includes('TECNICO')
+    && !roles.includes('ADMINISTRADOR')
+    && !roles.includes('RECEPCIONISTA');
+  const isAdministrator = roles.includes('ADMINISTRADOR');
+  const navItems = isClient
+    ? clientNavItems
+    : isTechnician
+      ? technicianNavItems
+      : isReceptionist
+        ? receptionistNavItems
+        : managementNavItems;
+  const userLabel = isClient
+    ? 'Cliente'
+    : isAdministrator
+      ? 'Administrador'
+      : isTechnician
+        ? 'Técnico'
+        : isReceptionist
+          ? 'Recepcionista'
+          : 'Usuario';
 
   layout.innerHTML = `
     <aside class="sidebar">
@@ -59,11 +84,11 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
       <header class="topbar">
         <button class="menu-toggle" type="button" aria-label="Abrir menú">☰</button>
         <div>
-          <p class="eyebrow">Panel de gestión</p>
+          <p class="eyebrow">${isTechnician ? 'Panel técnico' : 'Panel de gestión'}</p>
           <h1 class="page-title">${title}</h1>
         </div>
         <div class="topbar-user">
-          <div class="avatar">${isClient ? 'CL' : 'US'}</div>
+          <div class="avatar">${isClient ? 'CL' : isAdministrator ? 'AD' : isTechnician ? 'TE' : isReceptionist ? 'RE' : 'US'}</div>
           <div><strong>${userLabel}</strong><small>${userLabel}</small></div>
         </div>
       </header>

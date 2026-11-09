@@ -10,8 +10,16 @@ export function listarMisPresupuestos(): Promise<Presupuesto[]> {
   return apiRequest<Presupuesto[]>('/clientes/me/presupuestos');
 }
 
+export function obtenerPresupuestoPorOrden(ordenId: number): Promise<Presupuesto> {
+  return apiRequest<Presupuesto>(`/ordenes/${ordenId}/presupuesto`);
+}
+
 export function listarPresupuestos(): Promise<Presupuesto[]> {
   return apiRequest<Presupuesto[]>('/presupuestos');
+}
+
+export function listarMisPresupuestosTecnico(): Promise<Presupuesto[]> {
+  return apiRequest<Presupuesto[]>('/presupuestos/me');
 }
 
 export function decidirPresupuesto(id: number, decision: Extract<EstadoPresupuesto, 'APROBADO' | 'RECHAZADO'>): Promise<Presupuesto> {
@@ -30,4 +38,11 @@ export function crearPresupuesto(ordenId: number, request: CrearPresupuestoReque
 
 export function publicarPresupuesto(id: number): Promise<Presupuesto> {
   return apiRequest<Presupuesto>(`/presupuestos/${id}/publicar`, { method: 'POST' });
+}
+
+export function editarPresupuesto(id: number, request: CrearPresupuestoRequest): Promise<Presupuesto> {
+  return apiRequest<Presupuesto>(`/presupuestos/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  });
 }

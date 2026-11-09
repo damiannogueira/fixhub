@@ -15,6 +15,7 @@ import { MisEquiposPage } from '../pages/portal-cliente/MisEquiposPage';
 import { MisPresupuestosPage } from '../pages/portal-cliente/MisPresupuestosPage';
 import { PresupuestosPage } from '../pages/presupuestos/PresupuestosPage';
 import { ClienteDetallePage } from '../pages/clientes/ClienteDetallePage';
+import { DetalleInventarioPage } from '../pages/inventario/DetalleInventarioPage';
 import type { Rol } from '../types/auth';
 import { getAccessToken } from '../utils/authStorage';
 import { hasAnyRole, hasAuthenticatedSession, requiresPasswordChange } from '../utils/authState';
@@ -35,6 +36,7 @@ const routes: Record<string, Route> = {
   '/clientes/detalle': { render: () => ClienteDetallePage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   '/ordenes': { render: () => OrdenesPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
   '/inventario': { render: () => InventarioPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
+  '/inventario/detalle': { render: () => DetalleInventarioPage.render(), roles: ['ADMINISTRADOR'] },
   '/usuarios': { render: () => UsuariosPage.render(), roles: ['ADMINISTRADOR'] },
   '/usuarios/nuevo': { render: () => CrearUsuarioPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   '/usuarios/editar': { render: () => EditarUsuarioPage.render(), roles: ['ADMINISTRADOR'] },

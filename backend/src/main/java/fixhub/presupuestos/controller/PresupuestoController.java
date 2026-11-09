@@ -27,6 +27,11 @@ public class PresupuestoController {
     @GetMapping("/presupuestos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')")
     public List<PresupuestoResponse> todos() { return service.listarTodos(); }
+    @GetMapping("/presupuestos/me")
+    @PreAuthorize("hasRole('TECNICO')")
+    public List<PresupuestoResponse> asignados(@AuthenticationPrincipal Jwt jwt) {
+        return service.listarAsignados(usuarioId(jwt));
+    }
     @PutMapping("/presupuestos/{id}")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')")
     public PresupuestoResponse editar(@PathVariable Long id, @Valid @RequestBody CrearPresupuestoRequest request, @AuthenticationPrincipal Jwt jwt) { return service.editar(id, request, usuarioId(jwt)); }

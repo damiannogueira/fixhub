@@ -1,6 +1,8 @@
 import { renderAppLayout } from '../../components/layout/AppLayout';
 import { renderBadge } from '../../components/ui/Badge';
-import { obtenerMiOrden } from '../../services/ordenesService';
+import { obtenerDiagnosticoCliente, obtenerMiOrden, type DiagnosticoCliente } from '../../services/ordenesService';
+import { obtenerPresupuestoPorOrden } from '../../services/presupuestosService';
+import type { Presupuesto } from '../../types/presupuesto';
 import type { EstadoOrden, OrdenCliente } from '../../types/orden';
 
 export const DetalleOrdenClientePage = {
@@ -28,13 +30,23 @@ export const DetalleOrdenClientePage = {
 
 async function loadOrder(container: HTMLElement, id: number): Promise<void> {
   try {
-    renderOrder(container, await obtenerMiOrden(id));
+    const [order, diagnostico, presupuesto] = await Promise.all([
+      obtenerMiOrden(id),
+      optionalRequest(obtenerDiagnosticoCliente(id)),
+      optionalRequest(obtenerPresupuestoPorOrden(id)),
+    ]);
+    renderOrder(container, order, diagnostico, presupuesto);
   } catch (error) {
     showError(container, error instanceof Error ? error.message : 'No se pudo cargar la reparación.');
   }
 }
 
-function renderOrder(container: HTMLElement, order: OrdenCliente): void {
+function renderOrder(
+  container: HTMLElement,
+  order: OrdenCliente,
+  diagnostico: DiagnosticoCliente | null,
+  presupuesto: Presupuesto | null,
+): void {
   const equipmentName = [order.equipo.tipo, order.equipo.marca, order.equipo.modelo]
     .filter(Boolean)
     .join(' ');
@@ -49,8 +61,43 @@ function renderOrder(container: HTMLElement, order: OrdenCliente): void {
       <div><dt>Número de serie</dt><dd>${escapeHtml(order.equipo.numeroSerie ?? 'No informado')}</dd></div>
       ${order.fechaEntrega ? `<div><dt>Fecha de entrega</dt><dd>${formatDate(order.fechaEntrega)}</dd></div>` : ''}
     </div>
+    <section class="detail-section">
+      <h3>Detalle de la reparación</h3>
+      ${diagnostico ? `
+        <div class="detail-grid">
+          <div><dt>Falla detectada</dt><dd>${escapeHtml(diagnostico.descripcionFalla)}</dd></div>
+          <div><dt>Tareas requeridas</dt><dd>${escapeHtml(diagnostico.tareasRequeridas)}</dd></div>
+          <div><dt>Fecha del diagnóstico</dt><dd>${formatDate(diagnostico.fecha)}</dd></div>
+        </div>
+      ` : '<p class="muted">El diagnóstico todavía no está disponible.</p>'}
+    </section>
+    <section class="detail-section">
+      <div class="customer-order-detail-header">
+        <h3>Presupuesto y repuestos</h3>
+        ${presupuesto?.estado === 'PUBLICADO' ? '<a class="btn btn-primary" href="#/mis-presupuestos">Ir a aprobación de presupuestos</a>' : ''}
+      </div>
+      ${presupuesto ? `
+        <div class="detail-grid">
+          <div><dt>Estado</dt><dd>${renderBadge(formatStatus(presupuesto.estado), budgetTone(presupuesto.estado)).outerHTML}</dd></div>
+          <div><dt>Mano de obra</dt><dd>${formatMoney(presupuesto.costoManoObra)}</dd></div>
+          <div><dt>Total a aprobar</dt><dd><strong>${formatMoney(presupuesto.total)}</strong></dd></div>
+        </div>
+        ${presupuesto.detalles.length ? `
+          <h4>Repuestos presupuestados</h4>
+          <ul>${presupuesto.detalles.map((detail) => `<li>${escapeHtml(detail.repuesto)} · ${detail.cantidad} x ${formatMoney(detail.precioUnitario)} = <strong>${formatMoney(detail.cantidad * detail.precioUnitario)}</strong></li>`).join('')}</ul>
+        ` : '<p class="muted">No se incluyeron repuestos en este presupuesto.</p>'}
+      ` : '<p class="muted">Todavía no hay un presupuesto disponible para esta reparación.</p>'}
+    </section>
     ${order.motivoCancelacion ? `<p class="order-cancellation">Motivo de cancelación: ${escapeHtml(order.motivoCancelacion)}</p>` : ''}
   `;
+}
+
+async function optionalRequest<T>(request: Promise<T>): Promise<T | null> {
+  try {
+    return await request;
+  } catch {
+    return null;
+  }
 }
 
 function showError(container: HTMLElement, message: string): void {
@@ -58,7 +105,7 @@ function showError(container: HTMLElement, message: string): void {
   container.textContent = message;
 }
 
-function formatStatus(status: EstadoOrden): string {
+function formatStatus(status: string): string {
   return status.replaceAll('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase());
 }
 
@@ -68,6 +115,17 @@ function statusTone(status: EstadoOrden): 'success' | 'warning' | 'danger' | 'in
   if (status === 'ENTREGADA' || status === 'FINALIZADA') return 'success';
   if (status === 'EN_REPARACION' || status === 'APROBADA') return 'info';
   return 'neutral';
+}
+
+function budgetTone(status: Presupuesto['estado']): 'success' | 'warning' | 'danger' | 'info' | 'neutral' {
+  if (status === 'APROBADO') return 'success';
+  if (status === 'RECHAZADO') return 'danger';
+  if (status === 'PUBLICADO') return 'info';
+  return 'warning';
+}
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value);
 }
 
 function formatDate(value: string): string {

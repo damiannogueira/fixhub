@@ -8,5 +8,6 @@ import java.util.Optional;
 public interface PresupuestoRepository extends JpaRepository<Presupuesto, Long> {
     Optional<Presupuesto> findByOrdenId(Long ordenId);
     List<Presupuesto> findAllByOrderByFechaCreacionDesc();
+    List<Presupuesto> findAllByOrdenTecnicoIdOrderByFechaCreacionDesc(Long tecnicoId);
     List<Presupuesto> findAllByOrdenEquipoClienteUsuarioIdOrderByFechaCreacionDesc(Long usuarioId);
 }

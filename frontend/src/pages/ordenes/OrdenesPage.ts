@@ -2,7 +2,22 @@ import { renderAppLayout } from '../../components/layout/AppLayout';
 import { renderTable } from '../../components/ui/Table';
 import { listarClientes } from '../../services/clientesService';
 import { listarEquiposDeCliente } from '../../services/equiposService';
-import { asignarTecnico, cambiarEstadoOrden, cancelarOrden, crearOrden, listarOrdenes } from '../../services/ordenesService';
+import {
+  asignarTecnico,
+  actualizarDiagnostico,
+  cambiarEstadoOrden,
+  cancelarOrden,
+  crearDiagnostico,
+  crearOrden,
+  crearRegistroTecnico,
+  consumirRepuesto,
+  listarConsumos,
+  listarMisOrdenesTecnico,
+  listarOrdenes,
+  listarRegistrosTecnicos,
+  obtenerDiagnosticoTecnico,
+} from '../../services/ordenesService';
+import { listarRepuestos } from '../../services/repuestosService';
 import { listarTecnicos } from '../../services/usuariosService';
 import type { EstadoOrden, OrdenTrabajo } from '../../types/orden';
 import type { Usuario } from '../../types/usuario';
@@ -21,6 +36,9 @@ const allOperationalStatuses: EstadoOrden[] = [
 
 export const OrdenesPage = {
   render(): HTMLElement {
+    if (hasAnyRole(['TECNICO']) && !hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA'])) {
+      return renderTechnicianOrders();
+    }
     const content = document.createElement('div');
     content.innerHTML = `
       <div class="page-heading"><div><p class="muted">Seguimiento del taller</p><h2>Órdenes de trabajo</h2></div><button class="btn btn-primary" id="new-order">+ Nueva orden</button></div>
@@ -102,6 +120,186 @@ export const OrdenesPage = {
       tablePanel.replaceChildren(table);
     };
 
+    function renderTechnicianOrders(): HTMLElement {
+      const content = document.createElement('div');
+      content.innerHTML = `
+        <div class="page-heading"><div><p class="muted">Trabajo asignado</p><h2>Mis órdenes</h2></div></div>
+        <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar orden" placeholder="Buscar por orden, cliente o equipo..." /></div></section>
+        <section class="technical-orders"><div class="table-state">Cargando órdenes asignadas...</div></section>
+        <div class="modal-backdrop technical-log-modal" id="technical-log-modal" hidden>
+          <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="technical-log-title">
+            <div class="panel-header"><h3 id="technical-log-title">Registro de tarea</h3><button class="btn btn-secondary" type="button" id="close-technical-log">Cerrar</button></div>
+            <div id="technical-log-content"><div class="table-state">Cargando registros...</div></div>
+          </section>
+        </div>
+      `;
+      const list = content.querySelector('.technical-orders') as HTMLElement;
+      const search = content.querySelector('.search-input') as HTMLInputElement;
+      const technicalLogModal = content.querySelector('#technical-log-modal') as HTMLElement;
+      technicalLogModal.querySelector('#close-technical-log')?.addEventListener('click', () => { technicalLogModal.hidden = true; });
+      let orders: OrdenTrabajo[] = [];
+
+      const render = () => {
+        const query = search.value.trim().toLowerCase();
+        const filtered = orders.filter((order) => {
+          const text = `${order.id} ${order.cliente.nombre} ${order.cliente.apellido} ${order.equipo.tipo} ${order.equipo.marca} ${order.equipo.modelo}`.toLowerCase();
+          return !query || text.includes(query);
+        });
+        list.innerHTML = filtered.length
+          ? filtered.map((order) => renderTechnicalOrder(order)).join('')
+          : '<section class="panel"><p class="muted">No tenés órdenes asignadas.</p></section>';
+        bindTechnicalActions(list, () => load(), technicalLogModal);
+      };
+
+      const load = async () => {
+        try {
+          orders = await listarMisOrdenesTecnico();
+          render();
+        } catch (error) {
+          list.className = 'state-box table-state';
+          list.textContent = error instanceof Error ? error.message : 'No se pudieron cargar tus órdenes.';
+        }
+      };
+      search.addEventListener('input', render);
+      void load();
+      return renderAppLayout(content, 'Mis órdenes');
+    }
+
+    function renderTechnicalOrder(order: OrdenTrabajo): string {
+      return `
+        <article class="panel technical-order-card" data-order-id="${order.id}">
+          <div class="panel-header">
+            <div><h3>Orden #${order.id}</h3><p class="muted">${escapeHtml(order.cliente.apellido)}, ${escapeHtml(order.cliente.nombre)} · ${escapeHtml([order.equipo.tipo, order.equipo.marca, order.equipo.modelo].filter(Boolean).join(' '))}</p></div>
+            <div class="technical-order-meta">
+              <span class="status-pill ${statusClass(order.estado)}">${formatStatus(order.estado)}</span>
+              ${renderTechnicalMenu(order)}
+            </div>
+          </div>
+          <p><strong>Problema informado:</strong> ${escapeHtml(order.problemaInicial)}</p>
+          <div class="technical-detail" hidden></div>
+        </article>
+      `;
+    }
+
+    function renderTechnicalMenu(order: OrdenTrabajo): string {
+      const actions: string[] = [];
+      if (order.estado === 'RECIBIDA') {
+        actions.push('<button type="button" class="action-menu-item" data-action="status" data-status="EN_DIAGNOSTICO">Iniciar diagnóstico</button>');
+      }
+      if (order.estado === 'EN_DIAGNOSTICO') {
+        actions.push('<button type="button" class="action-menu-item" data-action="diagnosis">Registrar diagnóstico</button>');
+        actions.push('<a class="action-menu-item" href="#/presupuestos">Preparar presupuesto</a>');
+        actions.push('<button type="button" class="action-menu-item" data-action="status" data-status="EN_REPARACION">Iniciar reparación</button>');
+      }
+      if (order.estado === 'PENDIENTE_APROBACION') {
+        actions.push('<span class="action-menu-note">Esperando decisión del cliente</span>');
+      }
+      if (order.estado === 'APROBADA') {
+        actions.push('<button type="button" class="action-menu-item" data-action="status" data-status="EN_REPARACION">Iniciar reparación</button>');
+      }
+      if (order.estado === 'EN_REPARACION') {
+        actions.push('<button type="button" class="action-menu-item" data-action="technical-log">Registrar tarea</button>');
+        actions.push('<button type="button" class="action-menu-item" data-action="technical-log">Ver registros técnicos</button>');
+        actions.push('<button type="button" class="action-menu-item" data-action="consume-part">Registrar consumo</button>');
+        actions.push('<button type="button" class="action-menu-item action-menu-primary" data-action="status" data-status="FINALIZADA">Finalizar reparación</button>');
+      }
+      if (!actions.length) {
+        return '<span class="muted">Sin acciones</span>';
+      }
+      return `<details class="action-menu"><summary>Acciones</summary><div class="action-menu-content">${actions.join('')}</div></details>`;
+    }
+
+    function bindTechnicalActions(container: HTMLElement, reload: () => void, technicalLogModal?: HTMLElement): void {
+      container.querySelectorAll<HTMLButtonElement>('[data-action="status"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const card = button.closest<HTMLElement>('.technical-order-card');
+          const id = Number(card?.dataset.orderId);
+          button.disabled = true;
+          void cambiarEstadoOrden(id, button.dataset.status as EstadoOrden)
+            .then(reload)
+            .catch((error) => {
+              button.disabled = false;
+              showTableError(container, error instanceof Error ? error.message : 'No se pudo actualizar el estado.');
+            });
+        });
+      });
+      container.querySelectorAll<HTMLButtonElement>('[data-action="diagnosis"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const card = button.closest<HTMLElement>('.technical-order-card');
+          const id = Number(card?.dataset.orderId);
+          const detail = card?.querySelector<HTMLElement>('.technical-detail');
+          if (detail) renderDiagnosisForm(detail, id, reload);
+        });
+      });
+      container.querySelectorAll<HTMLButtonElement>('[data-action="technical-log"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const card = button.closest<HTMLElement>('.technical-order-card');
+          const id = Number(card?.dataset.orderId);
+          const detail = card?.querySelector<HTMLElement>('.technical-detail');
+          if (detail && technicalLogModal) renderTechnicalLogForm(detail, id, reload, technicalLogModal);
+        });
+      });
+      container.querySelectorAll<HTMLButtonElement>('[data-action="consume-part"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const card = button.closest<HTMLElement>('.technical-order-card');
+          const id = Number(card?.dataset.orderId);
+          const detail = card?.querySelector<HTMLElement>('.technical-detail');
+          if (detail) renderConsumptionForm(detail, id, reload);
+        });
+      });
+    }
+
+    function renderConsumptionForm(container: HTMLElement, orderId: number, reload: () => void): void {
+      container.hidden = false;
+      container.innerHTML = '<div class="table-state">Cargando repuestos...</div>';
+      void Promise.all([listarRepuestos(), listarConsumos(orderId)]).then(([parts, consumptions]) => {
+        container.innerHTML = `<h4>Consumos registrados</h4>${consumptions.map((item) => `<p class="muted">${formatDate(item.fecha)} · ${escapeHtml(item.repuesto)} · ${item.cantidad}</p>`).join('') || '<p class="muted">Todavía no hay consumos.</p>'}<form class="user-form"><div class="form-group"><label class="form-label">Repuesto</label><select class="form-input" name="repuestoId" required><option value="">Seleccioná un repuesto</option>${parts.map((part) => `<option value="${part.id}">${escapeHtml(part.nombre)} — stock ${part.stockActual}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" name="cantidad" type="number" min="1" required></div><button class="btn btn-primary" type="submit">Registrar consumo</button></form>`;
+        const form = container.querySelector('form') as HTMLFormElement;
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          const values = new FormData(form);
+          void consumirRepuesto(orderId, { repuestoId: Number(values.get('repuestoId')), cantidad: Number(values.get('cantidad')) })
+            .then(reload)
+            .catch((error) => showFormError(form, error instanceof Error ? error.message : 'No se pudo registrar el consumo.'));
+        });
+      }).catch((error) => { container.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los consumos.'; });
+    }
+
+    function renderDiagnosisForm(container: HTMLElement, orderId: number, reload: () => void): void {
+      container.hidden = false;
+      container.innerHTML = '<div class="table-state">Cargando diagnóstico...</div>';
+      void obtenerDiagnosticoTecnico(orderId).catch(() => undefined).then((diagnosis) => {
+        container.innerHTML = `<form class="user-form"><div class="form-group"><label class="form-label">Descripción de la falla</label><textarea class="form-input" name="descripcionFalla" required>${escapeHtml(diagnosis?.descripcionFalla ?? '')}</textarea></div><div class="form-group"><label class="form-label">Tareas requeridas</label><textarea class="form-input" name="tareasRequeridas" required>${escapeHtml(diagnosis?.tareasRequeridas ?? '')}</textarea></div><div class="form-actions"><button class="btn btn-primary" type="submit">${diagnosis ? 'Actualizar diagnóstico' : 'Guardar diagnóstico'}</button></div></form>`;
+        const form = container.querySelector('form') as HTMLFormElement;
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          const values = new FormData(form);
+          const request = { descripcionFalla: String(values.get('descripcionFalla') ?? '').trim(), tareasRequeridas: String(values.get('tareasRequeridas') ?? '').trim() };
+          const save = diagnosis ? actualizarDiagnostico(orderId, request) : crearDiagnostico(orderId, request);
+          void save.then(reload).catch((error) => showFormError(form, error instanceof Error ? error.message : 'No se pudo guardar el diagnóstico.'));
+        });
+      });
+    }
+
+    function renderTechnicalLogForm(container: HTMLElement, orderId: number, reload: () => void, modal: HTMLElement): void {
+      const modalContent = modal.querySelector('#technical-log-content') as HTMLElement;
+      modal.hidden = false;
+      modalContent.innerHTML = '<div class="table-state">Cargando registros...</div>';
+      void listarRegistrosTecnicos(orderId).then((records) => {
+        modalContent.innerHTML = `<h4>Historial de tareas</h4><div class="technical-log-list">${records.map((record) => `<article class="technical-log-item"><strong>${escapeHtml(record.tareaRealizada)}</strong><small class="muted">${formatDate(record.fecha)} · ${escapeHtml(record.usuarioNombre)}</small>${record.observacion ? `<p>${escapeHtml(record.observacion)}</p>` : ''}</article>`).join('') || '<p class="muted">Todavía no hay registros.</p>'}</div><form class="user-form"><div class="form-group"><label class="form-label" for="technical-task">Tarea realizada</label><input class="form-input" id="technical-task" name="tareaRealizada" required></div><div class="form-group"><label class="form-label" for="technical-observation">Observación</label><textarea class="form-input" id="technical-observation" name="observacion" rows="3"></textarea></div><div class="form-actions"><button class="btn btn-primary" type="submit">Guardar registro</button></div></form>`;
+        const form = modalContent.querySelector('form') as HTMLFormElement;
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          const values = new FormData(form);
+          const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          submit.disabled = true;
+          void crearRegistroTecnico(orderId, { tareaRealizada: String(values.get('tareaRealizada') ?? '').trim(), observacion: String(values.get('observacion') ?? '').trim() })
+            .then(() => { reload(); renderTechnicalLogForm(container, orderId, reload, modal); })
+            .catch((error) => { submit.disabled = false; showFormError(form, error instanceof Error ? error.message : 'No se pudo guardar la tarea.'); });
+        });
+      }).catch((error) => { modalContent.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los registros.'; });
+    }
+
     search.addEventListener('input', updateTable);
     content.querySelector('#new-order')?.addEventListener('click', () => {
       void renderOrderForm(formPanel, () => {
@@ -157,10 +355,12 @@ function renderOrdersTable(orders: OrdenTrabajo[], technicians: Usuario[]): HTML
 
 function renderTechnicianAction(order: OrdenTrabajo, technicians: Usuario[]): string {
   if (order.estado === 'ENTREGADA' || order.estado === 'CANCELADA') {
-    return order.tecnicoId ? `#${order.tecnicoId}` : 'Sin asignar';
+    const technician = technicians.find((item) => item.id === order.tecnicoId);
+    return technician ? escapeHtml(technicianLabel(technician)) : 'Sin asignar';
   }
+  const assignedTechnician = technicians.find((item) => item.id === order.tecnicoId);
   return `<select class="form-input technician-select" data-order-technician="${order.id}" aria-label="Asignar técnico">
-    <option value="">${order.tecnicoId ? `Técnico #${order.tecnicoId}` : 'Sin asignar'}</option>
+    <option value="">${assignedTechnician ? escapeHtml(technicianLabel(assignedTechnician)) : 'Sin asignar'}</option>
     ${technicians.map((technician) => `<option value="${technician.id}" ${technician.id === order.tecnicoId ? 'selected' : ''}>${technicianLabel(technician)}</option>`).join('')}
   </select>`;
 }

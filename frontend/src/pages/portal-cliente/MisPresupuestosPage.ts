@@ -20,9 +20,8 @@ function renderBudgets(container: HTMLElement, budgets: Presupuesto[]): void {
   container.innerHTML = budgets.map((budget) => `
     <article class="budget-card">
       <div class="customer-order-header"><h3>Presupuesto #${budget.id} · Orden #${budget.ordenId}</h3>${renderBadge(formatStatus(budget.estado), budget.estado === 'RECHAZADO' ? 'danger' : budget.estado === 'APROBADO' ? 'success' : 'warning').outerHTML}</div>
-      <p>Mano de obra: <strong>${formatMoney(budget.costoManoObra)}</strong></p>
-      <p>Total: <strong>${formatMoney(budget.total)}</strong></p>
-      ${budget.detalles.length ? `<ul>${budget.detalles.map((detail) => `<li>${escapeHtml(detail.repuesto)} x ${detail.cantidad} — ${formatMoney(detail.precioUnitario)}</li>`).join('')}</ul>` : ''}
+      <div class="budget-cost-breakdown"><div class="budget-cost-row"><span>Mano de obra</span><strong>${formatMoney(budget.costoManoObra)}</strong></div>${budget.detalles.map((detail) => `<div class="budget-cost-row"><span>${escapeHtml(detail.repuesto)} · ${detail.cantidad} x ${formatMoney(detail.precioUnitario)}</span><strong>${formatMoney(detail.cantidad * detail.precioUnitario)}</strong></div>`).join('')}<div class="budget-cost-row budget-cost-total"><span>Total a aprobar</span><strong>${formatMoney(budget.total)}</strong></div></div>
+      ${budget.estado === 'PUBLICADO' ? '<p class="muted">La aprobación confirma la mano de obra y todos los repuestos detallados.</p>' : ''}
       ${budget.estado === 'PUBLICADO' ? '<div class="form-actions"><button class="btn btn-primary" data-decision="APROBADO">Aprobar</button><button class="btn btn-secondary" data-decision="RECHAZADO">Rechazar</button></div>' : ''}
     </article>
   `).join('');
