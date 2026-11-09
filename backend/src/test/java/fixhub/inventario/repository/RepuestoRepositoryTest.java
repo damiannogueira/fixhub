@@ -113,7 +113,7 @@ class RepuestoRepositoryTest {
             new BigDecimal("100.00")
         );
 
-        repuesto.setStockActual(stockActual);
+        repuesto.ajustarStock(stockActual);
 
         return repuesto;
     }
