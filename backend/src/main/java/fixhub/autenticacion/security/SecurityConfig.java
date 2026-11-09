@@ -17,7 +17,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-        HttpSecurity http
+        HttpSecurity http,
+        ProblemAuthenticationEntryPoint authenticationEntryPoint,
+        ProblemAccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
@@ -34,7 +36,13 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
+            )
             .oauth2ResourceServer(oauth2 -> oauth2
+                .authenticationEntryPoint(authenticationEntryPoint)
+                .accessDeniedHandler(accessDeniedHandler)
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(
                         jwtAuthenticationConverter()
