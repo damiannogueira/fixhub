@@ -22,6 +22,7 @@ import { listarTecnicos } from '../../services/usuariosService';
 import type { EstadoOrden, OrdenTrabajo } from '../../types/orden';
 import type { Usuario } from '../../types/usuario';
 import { hasAnyRole } from '../../utils/authState';
+import { router } from '../../router/router';
 
 const allOperationalStatuses: EstadoOrden[] = [
   'RECIBIDA',
@@ -42,7 +43,7 @@ export const OrdenesPage = {
     const content = document.createElement('div');
     content.innerHTML = `
       <div class="page-heading"><div><p class="muted">Seguimiento del taller</p><h2>Órdenes de trabajo</h2></div><button class="btn btn-primary" id="new-order">+ Nueva orden</button></div>
-      <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar orden" placeholder="Buscar orden, cliente o equipo..." /></div></section>
+      <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar orden" placeholder="Buscar orden, cliente o equipo..." /><select class="form-input filter-select" id="status-filter" aria-label="Filtrar por estado"><option value="">Todos los estados</option>${allOperationalStatuses.concat('CANCELADA').map((status) => `<option class="${statusClass(status)}" value="${status}">${formatStatus(status)}</option>`).join('')}</select></div></section>
       <section class="panel table-panel"><div class="table-state">Cargando órdenes...</div></section>
       <section class="panel order-form-panel" hidden></section>
       <div class="modal-backdrop" id="cancellation-modal" hidden>
@@ -67,14 +68,20 @@ export const OrdenesPage = {
     const formPanel = content.querySelector('.order-form-panel') as HTMLElement;
     const cancellationModal = content.querySelector('#cancellation-modal') as HTMLElement;
     const search = content.querySelector('.search-input') as HTMLInputElement;
+    const statusFilter = content.querySelector('#status-filter') as HTMLSelectElement;
+    statusFilter.addEventListener('change', () => {
+      statusFilter.className = `form-input filter-select${statusFilter.value ? ` ${statusClass(statusFilter.value as EstadoOrden)}` : ''}`;
+      updateTable();
+    });
     let orders: OrdenTrabajo[] = [];
     let technicians: Usuario[] = [];
 
     const updateTable = () => {
       const query = search.value.trim().toLowerCase();
+      const selectedStatus = statusFilter.value as EstadoOrden | '';
       const filtered = orders.filter((order) => {
         const text = `${order.id} ${order.cliente.apellido} ${order.cliente.nombre} ${order.equipo.tipo} ${order.equipo.marca} ${order.equipo.modelo}`.toLowerCase();
-        return !query || text.includes(query);
+        return (!query || text.includes(query)) && (!selectedStatus || order.estado === selectedStatus);
       });
       const table = renderOrdersTable(filtered, technicians);
       table.querySelectorAll<HTMLSelectElement>('[data-order-status]').forEach((select) => {
@@ -126,17 +133,26 @@ export const OrdenesPage = {
         <div class="page-heading"><div><p class="muted">Trabajo asignado</p><h2>Mis órdenes</h2></div></div>
         <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar orden" placeholder="Buscar por orden, cliente o equipo..." /></div></section>
         <section class="technical-orders"><div class="table-state">Cargando órdenes asignadas...</div></section>
-        <div class="modal-backdrop technical-log-modal" id="technical-log-modal" hidden>
-          <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="technical-log-title">
-            <div class="panel-header"><h3 id="technical-log-title">Registro de tarea</h3><button class="btn btn-secondary" type="button" id="close-technical-log">Cerrar</button></div>
-            <div id="technical-log-content"><div class="table-state">Cargando registros...</div></div>
+        <div class="modal-backdrop" id="technical-task-modal" hidden>
+          <section class="modal-dialog technical-action-modal" role="dialog" aria-modal="true" aria-labelledby="technical-task-title">
+            <div class="section-heading"><h3 id="technical-task-title">Registrar tarea</h3><button class="btn btn-secondary" type="button" data-close-technical-modal>Cancelar</button></div>
+            <div id="technical-task-content"></div>
+          </section>
+        </div>
+        <div class="modal-backdrop" id="technical-consumption-modal" hidden>
+          <section class="modal-dialog technical-action-modal" role="dialog" aria-modal="true" aria-labelledby="technical-consumption-title">
+            <div class="section-heading"><h3 id="technical-consumption-title">Registrar consumo</h3><button class="btn btn-secondary" type="button" data-close-technical-modal>Cancelar</button></div>
+            <div id="technical-consumption-content"></div>
           </section>
         </div>
       `;
       const list = content.querySelector('.technical-orders') as HTMLElement;
       const search = content.querySelector('.search-input') as HTMLInputElement;
-      const technicalLogModal = content.querySelector('#technical-log-modal') as HTMLElement;
-      technicalLogModal.querySelector('#close-technical-log')?.addEventListener('click', () => { technicalLogModal.hidden = true; });
+      const taskModal = content.querySelector('#technical-task-modal') as HTMLElement;
+      const consumptionModal = content.querySelector('#technical-consumption-modal') as HTMLElement;
+      content.querySelectorAll<HTMLElement>('[data-close-technical-modal]').forEach((button) => {
+        button.addEventListener('click', () => { (button.closest('.modal-backdrop') as HTMLElement).hidden = true; });
+      });
       let orders: OrdenTrabajo[] = [];
 
       const render = () => {
@@ -148,7 +164,14 @@ export const OrdenesPage = {
         list.innerHTML = filtered.length
           ? filtered.map((order) => renderTechnicalOrder(order)).join('')
           : '<section class="panel"><p class="muted">No tenés órdenes asignadas.</p></section>';
-        bindTechnicalActions(list, () => load(), technicalLogModal);
+        bindTechnicalActions(list, () => load(), taskModal, consumptionModal);
+        list.querySelectorAll<HTMLElement>('.technical-order-card').forEach((card) => {
+          card.addEventListener('click', (event) => {
+            const target = event.target as HTMLElement;
+            if (target.closest('button, a, details, select, input, textarea')) return;
+            router.navigate(`/ordenes/detalle?id=${card.dataset.orderId}`);
+          });
+        });
       };
 
       const load = async () => {
@@ -188,7 +211,7 @@ export const OrdenesPage = {
       }
       if (order.estado === 'EN_DIAGNOSTICO') {
         actions.push('<button type="button" class="action-menu-item" data-action="diagnosis">Registrar diagnóstico</button>');
-        actions.push('<a class="action-menu-item" href="#/presupuestos">Preparar presupuesto</a>');
+        actions.push(`<a class="action-menu-item" href="#/presupuestos?ordenId=${order.id}">Preparar presupuesto</a>`);
         actions.push('<button type="button" class="action-menu-item" data-action="status" data-status="EN_REPARACION">Iniciar reparación</button>');
       }
       if (order.estado === 'PENDIENTE_APROBACION') {
@@ -199,7 +222,7 @@ export const OrdenesPage = {
       }
       if (order.estado === 'EN_REPARACION') {
         actions.push('<button type="button" class="action-menu-item" data-action="technical-log">Registrar tarea</button>');
-        actions.push('<button type="button" class="action-menu-item" data-action="technical-log">Ver registros técnicos</button>');
+        actions.push('<button type="button" class="action-menu-item" data-action="technical-log-view">Ver registros técnicos</button>');
         actions.push('<button type="button" class="action-menu-item" data-action="consume-part">Registrar consumo</button>');
         actions.push('<button type="button" class="action-menu-item action-menu-primary" data-action="status" data-status="FINALIZADA">Finalizar reparación</button>');
       }
@@ -209,7 +232,7 @@ export const OrdenesPage = {
       return `<details class="action-menu"><summary>Acciones</summary><div class="action-menu-content">${actions.join('')}</div></details>`;
     }
 
-    function bindTechnicalActions(container: HTMLElement, reload: () => void, technicalLogModal?: HTMLElement): void {
+    function bindTechnicalActions(container: HTMLElement, reload: () => void, taskModal: HTMLElement, consumptionModal: HTMLElement): void {
       container.querySelectorAll<HTMLButtonElement>('[data-action="status"]').forEach((button) => {
         button.addEventListener('click', () => {
           const card = button.closest<HTMLElement>('.technical-order-card');
@@ -235,34 +258,60 @@ export const OrdenesPage = {
         button.addEventListener('click', () => {
           const card = button.closest<HTMLElement>('.technical-order-card');
           const id = Number(card?.dataset.orderId);
-          const detail = card?.querySelector<HTMLElement>('.technical-detail');
-          if (detail && technicalLogModal) renderTechnicalLogForm(detail, id, reload, technicalLogModal);
+          renderTechnicalTaskModal(taskModal, id, reload);
+        });
+        container.querySelectorAll<HTMLButtonElement>('[data-action="technical-log-view"]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const card = button.closest<HTMLElement>('.technical-order-card');
+            router.navigate(`/ordenes/detalle?id=${card?.dataset.orderId}`);
+          });
         });
       });
       container.querySelectorAll<HTMLButtonElement>('[data-action="consume-part"]').forEach((button) => {
         button.addEventListener('click', () => {
           const card = button.closest<HTMLElement>('.technical-order-card');
           const id = Number(card?.dataset.orderId);
-          const detail = card?.querySelector<HTMLElement>('.technical-detail');
-          if (detail) renderConsumptionForm(detail, id, reload);
+          renderTechnicalConsumptionModal(consumptionModal, id, reload);
         });
       });
     }
 
-    function renderConsumptionForm(container: HTMLElement, orderId: number, reload: () => void): void {
-      container.hidden = false;
-      container.innerHTML = '<div class="table-state">Cargando repuestos...</div>';
-      void Promise.all([listarRepuestos(), listarConsumos(orderId)]).then(([parts, consumptions]) => {
-        container.innerHTML = `<h4>Consumos registrados</h4>${consumptions.map((item) => `<p class="muted">${formatDate(item.fecha)} · ${escapeHtml(item.repuesto)} · ${item.cantidad}</p>`).join('') || '<p class="muted">Todavía no hay consumos.</p>'}<form class="user-form"><div class="form-group"><label class="form-label">Repuesto</label><select class="form-input" name="repuestoId" required><option value="">Seleccioná un repuesto</option>${parts.map((part) => `<option value="${part.id}">${escapeHtml(part.nombre)} — stock ${part.stockActual}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Cantidad</label><input class="form-input" name="cantidad" type="number" min="1" required></div><button class="btn btn-primary" type="submit">Registrar consumo</button></form>`;
-        const form = container.querySelector('form') as HTMLFormElement;
+    function renderTechnicalTaskModal(modal: HTMLElement, orderId: number, reload: () => void): void {
+      const content = modal.querySelector('#technical-task-content') as HTMLElement;
+      modal.hidden = false;
+      content.innerHTML = '<div class="table-state">Cargando registros...</div>';
+      void listarRegistrosTecnicos(orderId).then((records) => {
+        content.innerHTML = `<div class="technical-log-list">${records.map((record) => `<article class="technical-log-item"><strong>${escapeHtml(record.tareaRealizada)}</strong><small class="muted">${formatDate(record.fecha)} · ${escapeHtml(record.usuarioNombre)}</small>${record.observacion ? `<p>${escapeHtml(record.observacion)}</p>` : ''}</article>`).join('') || '<p class="muted">Todavía no hay tareas registradas.</p>'}</div><form class="user-form"><div class="form-group"><label class="form-label" for="list-task-name">Tarea realizada</label><input class="form-input" id="list-task-name" name="tareaRealizada" required></div><div class="form-group"><label class="form-label" for="list-task-note">Observación</label><textarea class="form-input" id="list-task-note" name="observacion" rows="4"></textarea></div><p class="form-alert" hidden></p><div class="form-actions"><button class="btn btn-primary" type="submit">Guardar tarea</button></div></form>`;
+        const form = content.querySelector('form') as HTMLFormElement;
         form.addEventListener('submit', (event) => {
           event.preventDefault();
           const values = new FormData(form);
-          void consumirRepuesto(orderId, { repuestoId: Number(values.get('repuestoId')), cantidad: Number(values.get('cantidad')) })
-            .then(reload)
-            .catch((error) => showFormError(form, error instanceof Error ? error.message : 'No se pudo registrar el consumo.'));
+          const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          submit.disabled = true;
+          void crearRegistroTecnico(orderId, { tareaRealizada: String(values.get('tareaRealizada') ?? '').trim(), observacion: String(values.get('observacion') ?? '').trim() })
+            .then(() => { modal.hidden = true; reload(); })
+            .catch((error) => { submit.disabled = false; showFormError(form, error instanceof Error ? error.message : 'No se pudo registrar la tarea.'); });
         });
-      }).catch((error) => { container.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los consumos.'; });
+      }).catch((error) => { content.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los registros.'; });
+    }
+
+    function renderTechnicalConsumptionModal(modal: HTMLElement, orderId: number, reload: () => void): void {
+      const content = modal.querySelector('#technical-consumption-content') as HTMLElement;
+      modal.hidden = false;
+      content.innerHTML = '<div class="table-state">Cargando repuestos...</div>';
+      void Promise.all([listarRepuestos(), listarConsumos(orderId)]).then(([parts, consumptions]) => {
+        content.innerHTML = `${consumptions.length ? `<div class="technical-log-list">${consumptions.map((item) => `<article class="technical-log-item"><strong>${escapeHtml(item.repuesto)} · ${item.cantidad} unidad(es)</strong><small class="muted">${formatDate(item.fecha)} · ${escapeHtml(item.usuarioNombre)}</small><p>Precio unitario: ${formatMoney(item.precioUnitario)}</p></article>`).join('')}</div>` : '<p class="muted">Todavía no hay consumos registrados.</p>'}<form class="user-form"><div class="form-group"><label class="form-label" for="list-consumption-part">Repuesto</label><select class="form-input" id="list-consumption-part" name="repuestoId" required><option value="">Seleccioná un repuesto</option>${parts.map((part) => `<option value="${part.id}">${escapeHtml(part.nombre)} — stock ${part.stockActual}</option>`).join('')}</select></div><div class="form-group"><label class="form-label" for="list-consumption-quantity">Cantidad</label><input class="form-input" id="list-consumption-quantity" name="cantidad" type="number" min="1" required></div><p class="form-alert" hidden></p><div class="form-actions"><button class="btn btn-primary" type="submit">Guardar consumo</button></div></form>`;
+        const form = content.querySelector('form') as HTMLFormElement;
+        form.addEventListener('submit', (event) => {
+          event.preventDefault();
+          const values = new FormData(form);
+          const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+          submit.disabled = true;
+          void consumirRepuesto(orderId, { repuestoId: Number(values.get('repuestoId')), cantidad: Number(values.get('cantidad')) })
+            .then(() => { modal.hidden = true; reload(); })
+            .catch((error) => { submit.disabled = false; showFormError(form, error instanceof Error ? error.message : 'No se pudo registrar el consumo.'); });
+        });
+      }).catch((error) => { content.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los consumos.'; });
     }
 
     function renderDiagnosisForm(container: HTMLElement, orderId: number, reload: () => void): void {
@@ -281,24 +330,6 @@ export const OrdenesPage = {
       });
     }
 
-    function renderTechnicalLogForm(container: HTMLElement, orderId: number, reload: () => void, modal: HTMLElement): void {
-      const modalContent = modal.querySelector('#technical-log-content') as HTMLElement;
-      modal.hidden = false;
-      modalContent.innerHTML = '<div class="table-state">Cargando registros...</div>';
-      void listarRegistrosTecnicos(orderId).then((records) => {
-        modalContent.innerHTML = `<h4>Historial de tareas</h4><div class="technical-log-list">${records.map((record) => `<article class="technical-log-item"><strong>${escapeHtml(record.tareaRealizada)}</strong><small class="muted">${formatDate(record.fecha)} · ${escapeHtml(record.usuarioNombre)}</small>${record.observacion ? `<p>${escapeHtml(record.observacion)}</p>` : ''}</article>`).join('') || '<p class="muted">Todavía no hay registros.</p>'}</div><form class="user-form"><div class="form-group"><label class="form-label" for="technical-task">Tarea realizada</label><input class="form-input" id="technical-task" name="tareaRealizada" required></div><div class="form-group"><label class="form-label" for="technical-observation">Observación</label><textarea class="form-input" id="technical-observation" name="observacion" rows="3"></textarea></div><div class="form-actions"><button class="btn btn-primary" type="submit">Guardar registro</button></div></form>`;
-        const form = modalContent.querySelector('form') as HTMLFormElement;
-        form.addEventListener('submit', (event) => {
-          event.preventDefault();
-          const values = new FormData(form);
-          const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
-          submit.disabled = true;
-          void crearRegistroTecnico(orderId, { tareaRealizada: String(values.get('tareaRealizada') ?? '').trim(), observacion: String(values.get('observacion') ?? '').trim() })
-            .then(() => { reload(); renderTechnicalLogForm(container, orderId, reload, modal); })
-            .catch((error) => { submit.disabled = false; showFormError(form, error instanceof Error ? error.message : 'No se pudo guardar la tarea.'); });
-        });
-      }).catch((error) => { modalContent.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los registros.'; });
-    }
 
     search.addEventListener('input', updateTable);
     content.querySelector('#new-order')?.addEventListener('click', () => {
@@ -354,7 +385,7 @@ function renderOrdersTable(orders: OrdenTrabajo[], technicians: Usuario[]): HTML
 }
 
 function renderTechnicianAction(order: OrdenTrabajo, technicians: Usuario[]): string {
-  if (order.estado === 'ENTREGADA' || order.estado === 'CANCELADA') {
+  if (order.estado === 'FINALIZADA' || order.estado === 'ENTREGADA' || order.estado === 'CANCELADA') {
     const technician = technicians.find((item) => item.id === order.tecnicoId);
     return technician ? escapeHtml(technicianLabel(technician)) : 'Sin asignar';
   }
@@ -467,23 +498,63 @@ async function renderOrderForm(container: HTMLElement, onCreated: () => void): P
     container.innerHTML = `
       <h3>Nueva orden de trabajo</h3>
       <form class="user-form" id="order-form">
-        <div class="form-group"><label class="form-label" for="client">Cliente</label><select class="form-input" id="client" required><option value="">Seleccioná un cliente</option>${clients.map((client) => `<option value="${client.id}">${escapeHtml(`${client.apellido}, ${client.nombre}`)}</option>`).join('')}</select></div>
+        <div class="form-group client-autocomplete"><label class="form-label" for="client">Cliente</label><input class="form-input" id="client" autocomplete="off" placeholder="Escribí nombre o apellido" required><div class="client-autocomplete-results" id="client-options" hidden></div><input type="hidden" id="client-id"></div>
         <div class="form-group"><label class="form-label" for="equipment">Equipo</label><select class="form-input" id="equipment" required disabled><option value="">Seleccioná primero un cliente</option></select></div>
         <div class="form-group"><label class="form-label" for="problem">Problema informado</label><textarea class="form-input" id="problem" name="problemaInicial" required></textarea></div>
         <div class="form-actions"><button class="btn btn-secondary" type="button" id="cancel-order">Cancelar</button><button class="btn btn-primary" type="submit">Crear orden</button></div>
       </form>
     `;
     const form = container.querySelector('#order-form') as HTMLFormElement;
-    const clientSelect = container.querySelector('#client') as HTMLSelectElement;
+    const clientInput = container.querySelector('#client') as HTMLInputElement;
+    const clientIdInput = container.querySelector('#client-id') as HTMLInputElement;
+    const clientOptions = container.querySelector('#client-options') as HTMLElement;
     const equipmentSelect = container.querySelector('#equipment') as HTMLSelectElement;
-    clientSelect.addEventListener('change', async () => {
+    const loadClientEquipment = async (clientId: number): Promise<void> => {
       equipmentSelect.disabled = true;
       equipmentSelect.innerHTML = '<option value="">Cargando equipos...</option>';
-      const equipment = await listarEquiposDeCliente(Number(clientSelect.value));
+      const equipment = await listarEquiposDeCliente(clientId);
       equipmentSelect.innerHTML = equipment.length
-        ? `<option value="">Seleccioná un equipo</option>${equipment.map((item) => `<option value="${item.id}">${escapeHtml([item.tipo, item.marca, item.modelo].filter(Boolean).join(' '))}</option>`).join('')}`
-        : '<option value="">El cliente no tiene equipos</option>';
-      equipmentSelect.disabled = equipment.length === 0;
+        ? `<option value="">Seleccioná un equipo</option>${equipment.map((item) => `<option value="${item.id}">${escapeHtml([item.tipo, item.marca, item.modelo].filter(Boolean).join(' '))}</option>`).join('')}<option value="nuevo">+ Crear nuevo equipo</option>`
+        : '<option value="">El cliente no tiene equipos</option><option value="nuevo">+ Crear nuevo equipo</option>';
+      equipmentSelect.disabled = false;
+    };
+    clientInput.addEventListener('input', () => {
+      const value = clientInput.value.trim().toLowerCase();
+      const matches = clients
+        .filter((client) => {
+          const label = `${client.apellido}, ${client.nombre}`.toLowerCase();
+          return !value || label.includes(value);
+        })
+      clientOptions.innerHTML = matches.length
+        ? matches.map((client) => `<button type="button" class="client-autocomplete-option" data-client-id="${client.id}"><strong>${escapeHtml(`${client.apellido}, ${client.nombre}`)}</strong><small>${escapeHtml(client.email ?? client.telefono ?? 'Sin contacto')}</small></button>`).join('')
+        : '<p class="client-autocomplete-empty">No se encontraron clientes.</p>';
+      clientOptions.hidden = false;
+      const client = clients.find((item) => `${item.apellido}, ${item.nombre}`.toLowerCase() === value);
+      clientIdInput.value = client ? String(client.id) : '';
+      equipmentSelect.disabled = true;
+      equipmentSelect.innerHTML = '<option value="">Seleccioná un cliente válido</option>';
+      if (client) void loadClientEquipment(client.id);
+    });
+    clientInput.addEventListener('focus', () => {
+      clientInput.dispatchEvent(new Event('input'));
+    });
+    clientOptions.addEventListener('click', (event) => {
+      const option = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-client-id]');
+      if (!option) return;
+      const client = clients.find((item) => item.id === Number(option.dataset.clientId));
+      if (!client) return;
+      clientInput.value = `${client.apellido}, ${client.nombre}`;
+      clientIdInput.value = String(client.id);
+      clientOptions.hidden = true;
+      void loadClientEquipment(client.id);
+    });
+    document.addEventListener('click', (event) => {
+      if (!container.querySelector('.client-autocomplete')?.contains(event.target as Node)) clientOptions.hidden = true;
+    });
+    equipmentSelect.addEventListener('change', () => {
+      if (equipmentSelect.value === 'nuevo' && clientIdInput.value) {
+        window.location.hash = `/clientes/detalle?id=${clientIdInput.value}&nuevoEquipo=1`;
+      }
     });
     container.querySelector('#cancel-order')?.addEventListener('click', () => { container.hidden = true; });
     form.addEventListener('submit', async (event) => {
@@ -492,6 +563,16 @@ async function renderOrderForm(container: HTMLElement, onCreated: () => void): P
       submit.disabled = true;
       try {
         const problemaInicial = String(new FormData(form).get('problemaInicial') ?? '').trim();
+        if (!clientIdInput.value) {
+          showFormError(form, 'Seleccioná un cliente existente de la lista.');
+          submit.disabled = false;
+          return;
+        }
+        if (!equipmentSelect.value || equipmentSelect.value === 'nuevo') {
+          showFormError(form, 'Seleccioná un equipo existente para crear la orden.');
+          submit.disabled = false;
+          return;
+        }
         if (!problemaInicial) {
           showFormError(form, 'Ingresá el problema informado por el cliente.');
           submit.disabled = false;
@@ -531,6 +612,10 @@ function statusClass(status: EstadoOrden): string {
 function formatDate(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-AR');
+}
+
+function formatMoney(value: number): string {
+  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value);
 }
 
 function escapeHtml(value: string): string {

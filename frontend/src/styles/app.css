@@ -43,6 +43,8 @@
 .inventory-action-menu[open] { z-index: 20; }
 .inventory-action-menu[open] .action-menu-content { z-index: 30; }
 .technical-order-card { overflow: visible; position: relative; }
+.technical-order-card { cursor: pointer; transition: box-shadow .2s ease, transform .2s ease; }
+.technical-order-card:hover { background: var(--color-primary-light); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
 .technical-order-card:has(.action-menu[open]) { z-index: 10; }
 .inventory-action-menu .action-menu-content { min-width: 270px; }
 .inventory-part-link { padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
@@ -105,11 +107,23 @@ td { padding: .9rem .75rem; border-bottom: 1px solid var(--color-border); white-
 .order-form-panel { max-width: 760px; margin-top: 1.5rem; }
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 1rem; background: rgba(15, 23, 42, .55); }
 .modal-backdrop[hidden] { display: none; }
-.modal-dialog { width: min(100%, 520px); padding: 1.5rem; border-radius: var(--border-radius-lg); background: var(--color-surface); box-shadow: var(--shadow); }
+.modal-dialog { width: min(100%, 520px); max-height: calc(100vh - 2rem); overflow-y: auto; padding: 1.75rem; border-radius: var(--border-radius-lg); background: var(--color-surface); box-shadow: var(--shadow); }
 .modal-dialog h3 { margin-bottom: .5rem; }
 .status-pill { display: inline-flex; align-items: center; padding: .3rem .55rem; border: 1px solid; border-radius: 999px; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
-.table-action-select { min-width: 170px; padding: .3rem .6rem; border: 1px solid; border-radius: 999px; font-weight: 700; }
-.technician-select { min-width: 170px; padding: .35rem; }
+.table-action-select, .technician-select { min-width: 180px; min-height: 2.35rem; padding: .45rem 2rem .45rem .75rem; border: 1px solid var(--color-border); border-radius: var(--border-radius); color: var(--color-text); background-color: var(--color-surface); font: inherit; font-size: .82rem; font-weight: 700; line-height: 1.2; cursor: pointer; }
+.table-action-select { border-radius: 999px; }
+.table-action-select:focus, .technician-select:focus { outline: 2px solid rgba(234, 88, 12, .25); outline-offset: 1px; border-color: var(--color-accent); }
+.table-action-select:hover, .technician-select:hover { border-color: var(--color-accent); }
+.technician-select { color: var(--color-primary); background-color: var(--color-bg); font-weight: 600; }
+.table-action-select option.status-recibida, #status-filter option.status-recibida { color: #475569; background: #e2e8f0; }
+.table-action-select option.status-en_diagnostico, #status-filter option.status-en_diagnostico { color: #6d28d9; background: #ede9fe; }
+.table-action-select option.status-pendiente_aprobacion, #status-filter option.status-pendiente_aprobacion { color: #a16207; background: #fef9c3; }
+.table-action-select option.status-aprobada, #status-filter option.status-aprobada { color: #1d4ed8; background: #dbeafe; }
+.table-action-select option.status-en_reparacion, #status-filter option.status-en_reparacion { color: #0369a1; background: #e0f2fe; }
+.table-action-select option.status-finalizada, #status-filter option.status-finalizada { color: #047857; background: #d1fae5; }
+.table-action-select option.status-lista_para_retirar, #status-filter option.status-lista_para_retirar { color: #b45309; background: #fef3c7; }
+.table-action-select option.status-entregada, #status-filter option.status-entregada { color: #15803d; background: #dcfce7; }
+.table-action-select option.status-cancelada, #status-filter option.status-cancelada { color: #b91c1c; background: #fee2e2; }
 .table-action-select.status-recibida, .status-recibida { color: #475569; background: #e2e8f0; border-color: #cbd5e1; }
 .table-action-select.status-en_diagnostico, .status-en_diagnostico { color: #6d28d9; background: #ede9fe; border-color: #ddd6fe; }
 .table-action-select.status-pendiente_aprobacion, .status-pendiente_aprobacion { color: #a16207; background: #fef9c3; border-color: #fde68a; }
@@ -143,12 +157,42 @@ td { padding: .9rem .75rem; border-bottom: 1px solid var(--color-border); white-
 .customer-order-detail .btn { text-decoration: none; }
 .technical-log-modal .modal-dialog { max-width: 680px; }
 .technical-log-list { display: grid; gap: .75rem; margin: 1rem 0 1.25rem; }
-.technical-log-item { padding: .85rem 1rem; border: 1px solid var(--color-border); border-radius: var(--border-radius); background: var(--color-bg); }
-.technical-log-item p { margin: .35rem 0 0; line-height: 1.45; }
+.technical-log-item { display: grid; gap: .45rem; padding: 1rem 1.1rem; border: 1px solid var(--color-border); border-radius: var(--border-radius); background: var(--color-bg); }
+.technical-log-item strong { display: block; line-height: 1.4; }
+.technical-log-item small { display: block; line-height: 1.4; }
+.technical-log-item p { margin: .1rem 0 0; line-height: 1.5; }
+.technical-action-modal { max-width: 680px; }
+.technical-action-modal .section-heading { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); }
+.technical-order-detail { max-width: 1000px; padding: 1.75rem; }
+.technical-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.25rem; margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--color-border); }
+.technical-detail-header h3 { margin: .25rem 0; font-size: 1.2rem; }
+.technical-order-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 1.25rem; border: 1px solid var(--color-border); border-radius: var(--border-radius); background: var(--color-bg); }
+.technical-detail-section { margin-top: 1.75rem; padding: 1.5rem; border: 1px solid var(--color-border); border-radius: var(--border-radius-lg); }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.section-heading h3 { font-size: 1.05rem; }
 .budget-cost-breakdown { display: grid; gap: .7rem; margin: 1rem 0; }
 .budget-cost-row { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .65rem; border-bottom: 1px solid var(--color-border); }
 .budget-cost-row strong { text-align: right; }
 .budget-cost-total { padding-top: .25rem; font-size: 1.05rem; }
+.budget-detail-editor { display: grid; gap: .75rem; margin-bottom: .75rem; }
+.budget-detail-row { display: grid; grid-template-columns: minmax(0, 1fr) 8rem auto; gap: .75rem; align-items: center; }
+.budget-detail-row .stock-warning { grid-column: 1 / -1; margin-top: -.35rem; }
+.stock-warning { display: block; color: #b45309; font-size: .78rem; font-weight: 600; }
+.stock-warning[hidden] { display: none; }
+.diagnosis-summary { display: grid; gap: .75rem; padding: 1rem; border-radius: var(--border-radius); background: var(--color-surface-muted); }
+.diagnosis-summary p { display: grid; gap: .25rem; margin: 0; }
+.diagnosis-summary small { margin-top: .25rem; }
+@media (max-width: 640px) {
+  .budget-detail-row { grid-template-columns: 1fr auto; }
+  .budget-detail-row select { grid-column: 1 / -1; }
+}
+.client-autocomplete { position: relative; }
+.client-autocomplete-results { position: absolute; top: calc(100% + .35rem); right: 0; left: 0; z-index: 15; display: grid; max-height: 240px; overflow-y: auto; padding: .35rem; border: 1px solid var(--color-border); border-radius: var(--border-radius); background: var(--color-surface); box-shadow: var(--shadow); }
+.client-autocomplete-results[hidden] { display: none; }
+.client-autocomplete-option { display: grid; gap: .15rem; width: 100%; padding: .65rem .75rem; border: 0; border-radius: var(--border-radius); color: var(--color-text); background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.client-autocomplete-option:hover, .client-autocomplete-option:focus { outline: 0; background: var(--color-primary-light); }
+.client-autocomplete-option small, .client-autocomplete-empty { color: var(--color-text-muted); font-size: .75rem; }
+.client-autocomplete-empty { margin: 0; padding: .65rem .75rem; }
 .budget-list { display: grid; gap: .75rem; }
 .budget-card { padding: 1rem; border: 1px solid var(--color-border); border-radius: var(--border-radius); }
 .budget-form-panel { max-width: 760px; margin-bottom: 1.5rem; }
@@ -165,3 +209,4 @@ td { padding: .9rem .75rem; border-bottom: 1px solid var(--color-border); white-
 @media (max-width: 900px) { .portal-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .topbar-user div:last-child { display: none; }.page-heading { align-items: flex-start; flex-direction: column; }.toolbar { align-items: stretch; flex-direction: column; }.search-input, .filter-select { max-width: none; width: 100%; }.stats-grid { gap: .65rem; }.stat-card { padding: .85rem; }.stat-card strong { font-size: 1.5rem; }.page-content { padding: .75rem; } }
 @media (max-width: 560px) { .customer-order-detail { padding: 1rem; }.customer-order-detail-header { flex-direction: column; gap: .85rem; }.customer-order-detail-header .btn { width: 100%; }.customer-order-detail > .detail-grid, .detail-section .detail-grid { grid-template-columns: 1fr; }.detail-section { padding: 1rem; } }
+@media (max-width: 900px) { .table-action-select, .technician-select { min-width: 150px; } }

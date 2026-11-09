@@ -80,7 +80,9 @@ public class PresupuestoService {
     @Transactional
     public PresupuestoResponse publicar(Long id, Long actorId) {
         Presupuesto presupuesto = buscar(id); Usuario actor = usuarioService.buscarEntidadPorId(actorId);
-        validarEditor(actor, presupuesto.getOrden());
+        // El Técnico participa en la elaboración, pero solo Administrador y Recepcionista publican.
+        if (!actor.tieneRol(NombreRol.ADMINISTRADOR) && !actor.tieneRol(NombreRol.RECEPCIONISTA))
+            throw new AccessDeniedException("Solo el Administrador o el Recepcionista pueden publicar presupuestos.");
         if (presupuesto.getEstado() != EstadoPresupuesto.BORRADOR) throw new IllegalStateException("Solo se puede publicar un presupuesto borrador.");
         presupuesto.publicar(actor);
         ordenTrabajoService.cambiarEstado(presupuesto.getOrden().getId(), NombreEstadoOrden.PENDIENTE_APROBACION, actorId);
@@ -120,6 +122,9 @@ public class PresupuestoService {
             Repuesto repuesto = repuestoRepository.findByIdAndActivoTrue(request.repuestoId()).orElseThrow(() -> new IllegalArgumentException("Repuesto no encontrado."));
             return new DetallePresupuesto(presupuesto, repuesto, request.cantidad(), repuesto.getPrecioVenta());
         }).toList();
+        if (detalles.stream().map(detalle -> detalle.getRepuesto().getId()).distinct().count() != detalles.size()) {
+            throw new IllegalArgumentException("No se puede repetir un repuesto en el presupuesto.");
+        }
         presupuesto.getDetalles().clear(); presupuesto.getDetalles().addAll(detalles);
         BigDecimal repuestos = detalles.stream().map(d -> d.getPrecioUnitario().multiply(BigDecimal.valueOf(d.getCantidad()))).reduce(BigDecimal.ZERO, BigDecimal::add);
         presupuesto.setTotal(presupuesto.getCostoManoObra().add(repuestos));

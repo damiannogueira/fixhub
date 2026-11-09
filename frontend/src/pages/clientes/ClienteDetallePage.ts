@@ -67,6 +67,10 @@ function renderClient(container: HTMLElement, client: Cliente, equipment: Equipo
   container.querySelector('#add-equipment')?.addEventListener('click', () => {
     renderEquipmentForm(form, undefined, client.id, list, equipment);
   });
+  const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
+  if (params.get('nuevoEquipo') === '1') {
+    renderEquipmentForm(form, undefined, client.id, list, equipment);
+  }
 }
 
 function renderEquipmentList(

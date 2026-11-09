@@ -36,7 +36,7 @@ public class PresupuestoController {
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')")
     public PresupuestoResponse editar(@PathVariable Long id, @Valid @RequestBody CrearPresupuestoRequest request, @AuthenticationPrincipal Jwt jwt) { return service.editar(id, request, usuarioId(jwt)); }
     @PostMapping("/presupuestos/{id}/publicar")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
     public PresupuestoResponse publicar(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) { return service.publicar(id, usuarioId(jwt)); }
     @GetMapping("/clientes/me/presupuestos")
     @PreAuthorize("hasRole('CLIENTE')")

@@ -4,6 +4,8 @@ import { listarMisOrdenesTecnico, listarOrdenes } from '../../services/ordenesSe
 import { crearPresupuesto, editarPresupuesto, listarMisPresupuestosTecnico, listarPresupuestos, publicarPresupuesto } from '../../services/presupuestosService';
 import type { OrdenTrabajo } from '../../types/orden';
 import type { Presupuesto } from '../../types/presupuesto';
+import { listarRepuestos } from '../../services/repuestosService';
+import type { Repuesto } from '../../types/repuesto';
 import { hasAnyRole } from '../../utils/authState';
 
 export const PresupuestosPage = {
@@ -23,26 +25,38 @@ export const PresupuestosPage = {
 async function loadBudgets(list: HTMLElement, formPanel: HTMLElement): Promise<void> {
   try {
     const isTechnician = hasAnyRole(['TECNICO']) && !hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA']);
-    const [budgets, orders] = await Promise.all([
+    const [budgets, orders, parts] = await Promise.all([
       isTechnician ? listarMisPresupuestosTecnico() : listarPresupuestos(),
       isTechnician ? listarMisOrdenesTecnico() : listarOrdenes(),
+      listarRepuestos(),
     ]);
-    renderBudgetList(list, formPanel, budgets, orders);
+    renderBudgetList(list, formPanel, budgets, orders, parts);
+    const requestedOrderId = Number(new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('ordenId'));
+    if (Number.isInteger(requestedOrderId) && requestedOrderId > 0) {
+      const requestedOrder = orders.find((order) => order.id === requestedOrderId);
+      if (requestedOrder && !budgets.some((budget) => budget.ordenId === requestedOrderId)) {
+        void listarRepuestos().then((parts) => renderBudgetForm(formPanel, [requestedOrder], () => loadBudgets(list, formPanel), undefined, parts));
+      }
+    }
   } catch (error) {
     list.textContent = error instanceof Error ? error.message : 'No se pudieron cargar los presupuestos.';
   }
 }
 
-function renderBudgetList(list: HTMLElement, formPanel: HTMLElement, budgets: Presupuesto[], orders: OrdenTrabajo[]): void {
+function renderBudgetList(list: HTMLElement, formPanel: HTMLElement, budgets: Presupuesto[], orders: OrdenTrabajo[], parts: Repuesto[]): void {
   const existingOrderIds = new Set(budgets.map((budget) => budget.ordenId));
   const availableOrders = orders.filter((order) => !existingOrderIds.has(order.id) && order.estado === 'EN_DIAGNOSTICO');
+  // Según el README, solo Administrador y Recepcionista publican presupuestos.
+  const canPublish = hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA']);
   list.innerHTML = `
     <div class="panel-header"><h3>Presupuestos registrados</h3><button class="btn btn-primary" id="new-budget">+ Nuevo presupuesto</button></div>
-    ${budgets.length ? budgets.map((budget) => `<article class="budget-card"><div class="customer-order-header"><h3>Presupuesto #${budget.id} · Orden #${budget.ordenId}</h3>${renderBadge(formatStatus(budget.estado), budget.estado === 'APROBADO' ? 'success' : budget.estado === 'RECHAZADO' ? 'danger' : 'warning').outerHTML}</div><div class="budget-cost-breakdown"><div class="budget-cost-row"><span>Mano de obra</span><strong>${formatMoney(budget.costoManoObra)}</strong></div>${budget.detalles.map((detail) => `<div class="budget-cost-row"><span>${escapeHtml(detail.repuesto)} · ${detail.cantidad} x ${formatMoney(detail.precioUnitario)}</span><strong>${formatMoney(detail.cantidad * detail.precioUnitario)}</strong></div>`).join('')}<div class="budget-cost-row budget-cost-total"><span>Total</span><strong>${formatMoney(budget.total)}</strong></div></div>${budget.estado === 'BORRADOR' ? `<div class="form-actions"><button class="btn btn-secondary" data-edit="${budget.id}">Editar</button><button class="btn btn-secondary" data-publish="${budget.id}">Publicar al cliente</button></div>` : ''}</article>`).join('') : '<p class="muted">No hay presupuestos registrados.</p>'}`;
-  list.querySelector('#new-budget')?.addEventListener('click', () => renderBudgetForm(formPanel, availableOrders, () => loadBudgets(list, formPanel)));
+    ${budgets.length ? budgets.map((budget) => `<article class="budget-card"><div class="customer-order-header"><h3>Presupuesto #${budget.id} · Orden #${budget.ordenId}</h3>${renderBadge(formatStatus(budget.estado), budget.estado === 'APROBADO' ? 'success' : budget.estado === 'RECHAZADO' ? 'danger' : 'warning').outerHTML}</div><div class="budget-cost-breakdown"><div class="budget-cost-row"><span>Mano de obra</span><strong>${formatMoney(budget.costoManoObra)}</strong></div>${budget.detalles.map((detail) => `<div class="budget-cost-row"><span>${escapeHtml(detail.repuesto)} · ${detail.cantidad} x ${formatMoney(detail.precioUnitario)}${isPending(budget) ? stockWarningHtml(detail.repuestoId, detail.cantidad, parts) : ''}</span><strong>${formatMoney(detail.cantidad * detail.precioUnitario)}</strong></div>`).join('')}<div class="budget-cost-row budget-cost-total"><span>Total</span><strong>${formatMoney(budget.total)}</strong></div></div>${budget.estado === 'BORRADOR' ? `<div class="form-actions"><button class="btn btn-secondary" data-edit="${budget.id}">Editar</button>${canPublish ? `<button class="btn btn-secondary" data-publish="${budget.id}">Publicar al cliente</button>` : ''}</div>` : ''}</article>`).join('') : '<p class="muted">No hay presupuestos registrados.</p>'}`;
+  list.querySelector('#new-budget')?.addEventListener('click', () => {
+    void listarRepuestos().then((parts) => renderBudgetForm(formPanel, availableOrders, () => loadBudgets(list, formPanel), undefined, parts));
+  });
   list.querySelectorAll<HTMLButtonElement>('[data-edit]').forEach((button) => button.addEventListener('click', () => {
     const budget = budgets.find((item) => item.id === Number(button.dataset.edit));
-    if (budget) renderBudgetForm(formPanel, orders, () => loadBudgets(list, formPanel), budget);
+    if (budget) void listarRepuestos().then((parts) => renderBudgetForm(formPanel, orders, () => loadBudgets(list, formPanel), budget, parts));
   }));
   list.querySelectorAll<HTMLButtonElement>('[data-publish]').forEach((button) => button.addEventListener('click', () => {
     button.disabled = true;
@@ -50,13 +64,29 @@ function renderBudgetList(list: HTMLElement, formPanel: HTMLElement, budgets: Pr
   }));
 }
 
-function renderBudgetForm(panel: HTMLElement, orders: OrdenTrabajo[], onSaved: () => void, budget?: Presupuesto): void {
+function renderBudgetForm(panel: HTMLElement, orders: OrdenTrabajo[], onSaved: () => void, budget?: Presupuesto, parts: Repuesto[] = []): void {
   panel.hidden = false;
   const orderOptions = orders.map((order) => `<option value="${order.id}" ${budget?.ordenId === order.id ? 'selected' : ''}>Orden #${order.id} — ${escapeHtml(order.cliente.apellido)}, ${escapeHtml(order.cliente.nombre)}</option>`).join('');
   const details = budget?.detalles ?? [];
-  panel.innerHTML = `<h3>${budget ? `Editar presupuesto #${budget.id}` : 'Nuevo presupuesto'}</h3><form class="user-form"><div class="form-group"><label class="form-label" for="budget-order">Orden</label><select class="form-input" id="budget-order" name="ordenId" ${budget ? 'disabled' : ''} required><option value="">Seleccioná una orden en diagnóstico</option>${orderOptions}</select></div><div class="form-group"><label class="form-label" for="budget-labor">Costo de mano de obra</label><input class="form-input" id="budget-labor" name="costoManoObra" type="number" min="0" step="0.01" value="${budget?.costoManoObra ?? ''}" required></div>${details.length ? `<div class="form-group"><span class="form-label">Repuestos incluidos</span><ul>${details.map((detail) => `<li>${escapeHtml(detail.repuesto)} x ${detail.cantidad}</li>`).join('')}</ul><small class="muted">Los repuestos existentes se conservan al editar.</small></div>` : ''}<div class="form-actions"><button class="btn btn-secondary" type="button" id="close-budget">Cancelar</button><button class="btn btn-primary" type="submit">${budget ? 'Guardar cambios' : 'Guardar borrador'}</button></div></form>`;
+  panel.innerHTML = `<h3>${budget ? `Editar presupuesto #${budget.id}` : 'Nuevo presupuesto'}</h3><form class="user-form"><div class="form-group"><label class="form-label" for="budget-order">Orden</label><select class="form-input" id="budget-order" name="ordenId" ${budget ? 'disabled' : ''} required><option value="">Seleccioná una orden en diagnóstico</option>${orderOptions}</select></div><div class="form-group"><label class="form-label" for="budget-labor">Costo de mano de obra</label><input class="form-input" id="budget-labor" name="costoManoObra" type="number" min="0" step="0.01" value="${budget?.costoManoObra ?? ''}" required></div><div class="form-group"><span class="form-label">Repuestos</span><div class="budget-detail-editor" id="budget-details">${details.map((detail) => detailRow(detail.repuestoId, detail.cantidad, parts)).join('')}</div><button class="btn btn-secondary" type="button" id="add-budget-detail">+ Agregar repuesto</button><small class="muted">Los repuestos presupuestados son una estimación: no modifican el stock. El stock se descuenta solo con los consumos reales del técnico.</small></div><div class="form-actions"><button class="btn btn-secondary" type="button" id="close-budget">Cancelar</button><button class="btn btn-primary" type="submit">${budget ? 'Guardar cambios' : 'Guardar borrador'}</button></div></form>`;
   const form = panel.querySelector('form') as HTMLFormElement;
   panel.querySelector('#close-budget')?.addEventListener('click', () => { panel.hidden = true; });
+  panel.querySelector('#add-budget-detail')?.addEventListener('click', () => {
+    panel.querySelector('#budget-details')?.insertAdjacentHTML('beforeend', detailRow('', 1, parts));
+  });
+  const detailsEditor = panel.querySelector('#budget-details') as HTMLElement;
+  detailsEditor.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement;
+    if (target.closest('[data-remove-detail]')) target.closest('.budget-detail-row')?.remove();
+  });
+  // Aviso informativo: el presupuesto no modifica stock, pero conviene saber si habrá que reponer.
+  const refreshStockWarning = (event: Event): void => {
+    const row = (event.target as HTMLElement).closest<HTMLElement>('.budget-detail-row');
+    if (row) updateRowStockWarning(row, parts);
+  };
+  detailsEditor.addEventListener('input', refreshStockWarning);
+  detailsEditor.addEventListener('change', refreshStockWarning);
+  detailsEditor.querySelectorAll<HTMLElement>('.budget-detail-row').forEach((row) => updateRowStockWarning(row, parts));
   form.addEventListener('submit', (event) => {
     event.preventDefault();
     const values = new FormData(form);
@@ -64,7 +94,10 @@ function renderBudgetForm(panel: HTMLElement, orders: OrdenTrabajo[], onSaved: (
     button.disabled = true;
     const request = {
       costoManoObra: Number(values.get('costoManoObra')),
-      detalles: budget?.detalles.map((detail) => ({ repuestoId: detail.repuestoId, cantidad: detail.cantidad })) ?? [],
+      detalles: Array.from(form.querySelectorAll<HTMLElement>('.budget-detail-row')).map((row) => ({
+        repuestoId: Number((row.querySelector('[name="repuestoId"]') as HTMLSelectElement).value),
+        cantidad: Number((row.querySelector('[name="cantidad"]') as HTMLInputElement).value),
+      })).filter((detail) => detail.repuestoId > 0 && detail.cantidad > 0),
     };
     const save = budget
       ? editarPresupuesto(budget.id, request)
@@ -76,6 +109,30 @@ function renderBudgetForm(panel: HTMLElement, orders: OrdenTrabajo[], onSaved: (
       })
       .catch((error) => { button.disabled = false; form.prepend(errorMessage(error)); });
   });
+}
+function detailRow(repuestoId: number | string, cantidad: number, parts: Repuesto[]): string {
+  const options = parts.map((part) => `<option value="${part.id}" ${String(part.id) === String(repuestoId) ? 'selected' : ''}>${escapeHtml(part.nombre)} — stock ${part.stockActual} · ${formatMoney(part.precioVenta)}</option>`).join('');
+  return `<div class="budget-detail-row"><select class="form-input" name="repuestoId" required><option value="">Seleccioná repuesto</option>${options}</select><input class="form-input" name="cantidad" type="number" min="1" value="${cantidad}" required><button class="icon-button danger" type="button" data-remove-detail aria-label="Quitar repuesto">×</button><small class="stock-warning" role="status" hidden></small></div>`;
+}
+function stockShortageMessage(repuestoId: number | string, cantidad: number, parts: Repuesto[]): string | null {
+  const part = parts.find((item) => String(item.id) === String(repuestoId));
+  if (!part || !(cantidad > part.stockActual)) return null;
+  return `⚠ Stock disponible: ${part.stockActual}. Habrá que reponer antes de reparar.`;
+}
+function stockWarningHtml(repuestoId: number, cantidad: number, parts: Repuesto[]): string {
+  const message = stockShortageMessage(repuestoId, cantidad, parts);
+  return message ? `<small class="stock-warning">${message}</small>` : '';
+}
+function updateRowStockWarning(row: HTMLElement, parts: Repuesto[]): void {
+  const repuestoId = (row.querySelector('[name="repuestoId"]') as HTMLSelectElement).value;
+  const cantidad = Number((row.querySelector('[name="cantidad"]') as HTMLInputElement).value);
+  const warning = row.querySelector('.stock-warning') as HTMLElement;
+  const message = stockShortageMessage(repuestoId, cantidad, parts);
+  warning.textContent = message ?? '';
+  warning.hidden = !message;
+}
+function isPending(budget: Presupuesto): boolean {
+  return budget.estado === 'BORRADOR' || budget.estado === 'PUBLICADO';
 }
 function errorMessage(error: unknown): HTMLElement { const element = document.createElement('p'); element.className = 'form-alert'; element.textContent = error instanceof Error ? error.message : 'No se pudo completar la operación.'; return element; }
 function formatStatus(status: string): string { return status.replaceAll('_', ' ').toLowerCase().replace(/(^| )\w/g, (letter) => letter.toUpperCase()); }
