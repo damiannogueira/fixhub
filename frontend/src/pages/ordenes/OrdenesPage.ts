@@ -166,7 +166,14 @@ function renderTechnicianAction(order: OrdenTrabajo, technicians: Usuario[]): st
 }
 
 function technicianLabel(technician: Usuario): string {
-  return technician.email ?? technician.telefono ?? `Técnico #${technician.id}`;
+  if (technician.email) {
+    return technician.email.split('@')[0]
+      .split(/[._-]+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+  return technician.telefono ?? `Técnico #${technician.id}`;
 }
 
 function renderStatusAction(order: OrdenTrabajo): string {

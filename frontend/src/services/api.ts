@@ -1,3 +1,5 @@
+import { clearSession } from '../utils/authStorage';
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
 
 export class ApiError extends Error {
@@ -39,6 +41,10 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401 && token && window.location.hash !== '#/login') {
+      clearSession();
+      window.dispatchEvent(new CustomEvent('fixhub:session-expired'));
+    }
     let message = `La solicitud falló con estado ${response.status}.`;
 
     try {

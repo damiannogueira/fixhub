@@ -12,6 +12,8 @@ import { EditarUsuarioPage } from '../pages/usuarios/EditarUsuarioPage';
 import { DetalleOrdenClientePage } from '../pages/portal-cliente/DetalleOrdenClientePage';
 import { MiCuentaPage } from '../pages/portal-cliente/MiCuentaPage';
 import { MisEquiposPage } from '../pages/portal-cliente/MisEquiposPage';
+import { MisPresupuestosPage } from '../pages/portal-cliente/MisPresupuestosPage';
+import { PresupuestosPage } from '../pages/presupuestos/PresupuestosPage';
 import { ClienteDetallePage } from '../pages/clientes/ClienteDetallePage';
 import type { Rol } from '../types/auth';
 import { getAccessToken } from '../utils/authStorage';
@@ -40,6 +42,8 @@ const routes: Record<string, Route> = {
   '/mis-ordenes/detalle': { render: () => DetalleOrdenClientePage.render(), roles: ['CLIENTE'] },
   '/mi-cuenta': { render: () => MiCuentaPage.render(), roles: ['CLIENTE'] },
   '/mis-equipos': { render: () => MisEquiposPage.render(), roles: ['CLIENTE'] },
+  '/mis-presupuestos': { render: () => MisPresupuestosPage.render(), roles: ['CLIENTE'] },
+  '/presupuestos': { render: () => PresupuestosPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
 };
 
 function getCurrentPath(): string {

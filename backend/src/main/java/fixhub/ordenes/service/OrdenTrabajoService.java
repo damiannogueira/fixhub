@@ -297,6 +297,11 @@ public class OrdenTrabajoService {
         Usuario actor
     ) {
         NombreEstadoOrden origen = orden.getEstado().getNombre();
+        if (actor.tieneRol(NombreRol.CLIENTE)
+            && origen == NombreEstadoOrden.PENDIENTE_APROBACION
+            && destino == NombreEstadoOrden.APROBADA) {
+            return;
+        }
         if (actor.tieneRol(NombreRol.ADMINISTRADOR)) {
             if (destino == NombreEstadoOrden.CANCELADA) {
                 throw new TransicionEstadoInvalidaException(origen, destino);
@@ -342,7 +347,9 @@ public class OrdenTrabajoService {
         NombreEstadoOrden origen,
         NombreEstadoOrden destino
     ) {
-        return (origen == NombreEstadoOrden.FINALIZADA
+        return (origen == NombreEstadoOrden.EN_DIAGNOSTICO
+                && destino == NombreEstadoOrden.PENDIENTE_APROBACION)
+            || (origen == NombreEstadoOrden.FINALIZADA
                 && destino == NombreEstadoOrden.LISTA_PARA_RETIRAR)
             || (origen == NombreEstadoOrden.LISTA_PARA_RETIRAR
                 && destino == NombreEstadoOrden.ENTREGADA);

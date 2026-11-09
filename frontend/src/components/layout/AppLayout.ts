@@ -13,6 +13,7 @@ const managementNavItems: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: '▦' },
   { label: 'Clientes', path: '/clientes', icon: '◉' },
   { label: 'Órdenes', path: '/ordenes', icon: '▤' },
+  { label: 'Presupuestos', path: '/presupuestos', icon: '$' },
   { label: 'Inventario', path: '/inventario', icon: '◫' },
   { label: 'Usuarios', path: '/usuarios', icon: '♙' },
 ];
@@ -23,6 +24,7 @@ const clientNavItems: NavItem[] = [
   { label: 'Mi cuenta', path: '/mi-cuenta', icon: '◉' },
   { label: 'Mis equipos', path: '/mis-equipos', icon: '▣' },
   { label: 'Mis reparaciones', path: '/mis-ordenes', icon: '▤' },
+  { label: 'Mis presupuestos', path: '/mis-presupuestos', icon: '$' },
 ];
 
 export function renderAppLayout(content: HTMLElement, title: string): HTMLElement {
