@@ -2,12 +2,14 @@ import { renderAppLayout } from '../../components/layout/AppLayout';
 import { renderBadge } from '../../components/ui/Badge';
 import { renderTable } from '../../components/ui/Table';
 import {
+  activarRepuesto,
   actualizarRepuesto,
   crearRepuesto,
   desactivarRepuesto,
   listarMovimientos,
   listarRepuestos,
   listarRepuestosConStockBajo,
+  listarTodosRepuestos,
   registrarAjuste,
   registrarEntrada,
 } from '../../services/repuestosService';
@@ -17,15 +19,17 @@ import { hasAnyRole } from '../../utils/authState';
 export const InventarioPage = {
   render(): HTMLElement {
     const content = document.createElement('div');
+    const admin = hasAnyRole(['ADMINISTRADOR']);
     content.innerHTML = `
-      <div class="page-heading"><div><p class="muted">Repuestos y existencias</p><h2>Inventario</h2></div>${hasAnyRole(['ADMINISTRADOR']) ? '<button class="btn btn-primary" id="new-part">+ Nuevo repuesto</button>' : ''}</div>
-      <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar repuesto" placeholder="Buscar por código o nombre..." /><label class="checkbox-filter"><input type="checkbox" class="low-stock-filter"> Solo stock bajo</label></div></section>
+      <div class="page-heading"><div><p class="muted">Repuestos y existencias</p><h2>Inventario</h2></div>${admin ? '<button class="btn btn-primary" id="new-part">+ Nuevo repuesto</button>' : ''}</div>
+      <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar repuesto" placeholder="Buscar por código o nombre..." /><label class="checkbox-filter"><input type="checkbox" class="low-stock-filter"> Solo stock bajo</label>${admin ? '<label class="checkbox-filter"><input type="checkbox" class="inactive-filter" checked> Mostrar inactivos</label>' : ''}</div></section>
       <section class="panel inventory-form-panel" hidden></section>
       <section class="panel table-panel"><div class="table-state">Cargando repuestos...</div></section>
     `;
     const tablePanel = content.querySelector('.table-panel') as HTMLElement;
     const search = content.querySelector('.search-input') as HTMLInputElement;
     const lowStock = content.querySelector('.low-stock-filter') as HTMLInputElement;
+    const showInactive = content.querySelector('.inactive-filter') as HTMLInputElement | null;
     const formPanel = content.querySelector('.inventory-form-panel') as HTMLElement;
     let parts: Repuesto[] = [];
 
@@ -34,7 +38,8 @@ export const InventarioPage = {
       const filtered = parts.filter((part) => {
         const searchable = `${part.codigo} ${part.nombre} ${part.descripcion ?? ''}`.toLowerCase();
         return (!query || searchable.includes(query))
-          && (!lowStock.checked || part.stockActual <= part.stockMinimo);
+          && (!lowStock.checked || part.stockActual <= part.stockMinimo)
+          && (part.activo || showInactive?.checked === true);
       });
       const table = renderPartsTable(filtered);
       tablePanel.replaceChildren(table);
@@ -44,9 +49,11 @@ export const InventarioPage = {
 
     const load = async () => {
       try {
+        // El Administrador recibe el catálogo completo; el filtro de inactivos se aplica en pantalla.
+        // Stock bajo solo considera repuestos activos.
         parts = lowStock.checked
           ? await listarRepuestosConStockBajo()
-          : await listarRepuestos();
+          : admin ? await listarTodosRepuestos() : await listarRepuestos();
         loadedParts = parts;
         updateTable();
       } catch (error) {
@@ -56,6 +63,7 @@ export const InventarioPage = {
     };
     search.addEventListener('input', updateTable);
     lowStock.addEventListener('change', () => void load());
+    showInactive?.addEventListener('change', updateTable);
     content.querySelector('#new-part')?.addEventListener('click', () => renderPartForm(formPanel, undefined, () => void load()));
     void load();
     return renderAppLayout(content, 'Inventario');
@@ -71,10 +79,12 @@ function renderPartsTable(parts: Repuesto[]): HTMLElement {
       escapeHtml(part.nombre),
       `${part.stockActual} / mínimo ${part.stockMinimo}`,
       formatCurrency(part.precioVenta),
-      part.stockActual <= part.stockMinimo
-        ? renderBadge('Stock bajo', 'danger').outerHTML
-        : renderBadge('Disponible', 'success').outerHTML,
-      ...(admin ? [renderInventoryActions(part.id)] : []),
+      !part.activo
+        ? renderBadge('Inactivo', 'neutral').outerHTML
+        : part.stockActual <= part.stockMinimo
+          ? renderBadge('Stock bajo', 'danger').outerHTML
+          : renderBadge('Disponible', 'success').outerHTML,
+      ...(admin ? [part.activo ? renderInventoryActions(part.id) : renderInactiveActions(part.id)] : []),
     ]),
   );
 }
@@ -85,6 +95,7 @@ function bindPartRows(table: HTMLElement, parts: Repuesto[]): void {
     const part = parts[index];
     if (!part) return;
     row.classList.add('inventory-row-link');
+    if (!part.activo) row.classList.add('inventory-row-inactive');
     row.addEventListener('click', (event) => {
       if ((event.target as HTMLElement).closest('button, a, details, summary')) return;
       window.location.hash = `/inventario/detalle?id=${part.id}`;
@@ -112,6 +123,18 @@ function renderInventoryActions(partId: number): string {
   </details>`;
 }
 
+// Un repuesto inactivo no admite edición ni movimientos de stock: solo puede reactivarse.
+function renderInactiveActions(partId: number): string {
+  return `<details class="action-menu inventory-action-menu">
+    <summary>Acciones</summary>
+    <div class="action-menu-content">
+      <button type="button" class="action-menu-item action-menu-primary" data-inventory-action="activate" data-part-id="${partId}">
+        <strong>Reactivar repuesto</strong><small>Volver a incluirlo en el catálogo y en los presupuestos.</small>
+      </button>
+    </div>
+  </details>`;
+}
+
 function bindAdminActions(table: HTMLElement, panel: HTMLElement, reload: () => void): void {
   if (!hasAnyRole(['ADMINISTRADOR'])) return;
   table.querySelectorAll<HTMLButtonElement>('[data-part-detail]').forEach((button) => button.addEventListener('click', () => {
@@ -131,6 +154,9 @@ function bindAdminActions(table: HTMLElement, panel: HTMLElement, reload: () => 
     } else if (action === 'delete') {
       if (!window.confirm('¿Desactivar este repuesto?')) return;
       void desactivarRepuesto(partId).then(reload).catch((error) => panel.prepend(errorMessage(error)));
+    } else if (action === 'activate') {
+      if (!window.confirm('¿Reactivar este repuesto?')) return;
+      void activarRepuesto(partId).then(reload).catch((error) => { panel.hidden = false; panel.prepend(errorMessage(error)); });
     }
   }));
 }

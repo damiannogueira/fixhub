@@ -70,8 +70,10 @@ public class InventarioService {
         if (!actor.tieneRol(NombreRol.ADMINISTRADOR)) {
             throw new AccessDeniedException("Solo el Administrador puede consultar movimientos de stock.");
         }
-        repuestoRepository.findByIdAndActivoTrue(repuestoId)
-            .orElseThrow(() -> new RepuestoNoEncontradoException(repuestoId));
+        // El historial también se consulta para repuestos inactivos.
+        if (!repuestoRepository.existsById(repuestoId)) {
+            throw new RepuestoNoEncontradoException(repuestoId);
+        }
         return movimientoRepository.findAllByRepuestoIdOrderByFechaDescIdDesc(repuestoId)
             .stream().map(this::convertirMovimiento).toList();
     }

@@ -4,6 +4,7 @@ import fixhub.ordenes.dto.AsignarTecnicoRequest;
 import fixhub.ordenes.dto.CambiarEstadoOrdenRequest;
 import fixhub.ordenes.dto.CancelarOrdenRequest;
 import fixhub.ordenes.dto.CrearOrdenTrabajoRequest;
+import fixhub.ordenes.dto.HistorialOrdenResponse;
 import fixhub.ordenes.dto.OrdenClienteResponse;
 import fixhub.ordenes.dto.OrdenTrabajoResponse;
 import fixhub.ordenes.service.OrdenTrabajoService;
@@ -60,6 +61,34 @@ public class OrdenTrabajoController {
         return ResponseEntity.ok(ordenTrabajoService.buscarPorId(id));
     }
 
+    @GetMapping("/ordenes/{id}/historial")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    public ResponseEntity<List<HistorialOrdenResponse>> historial(
+        @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(ordenTrabajoService.listarHistorial(id));
+    }
+
+    @GetMapping("/clientes/{clienteId:\\d+}/ordenes")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    public ResponseEntity<List<OrdenTrabajoResponse>> listarPorCliente(
+        @PathVariable Long clienteId
+    ) {
+        return ResponseEntity.ok(
+            ordenTrabajoService.listarPorCliente(clienteId)
+        );
+    }
+
+    @GetMapping("/equipos/{equipoId:\\d+}/ordenes")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    public ResponseEntity<List<OrdenTrabajoResponse>> listarPorEquipo(
+        @PathVariable Long equipoId
+    ) {
+        return ResponseEntity.ok(
+            ordenTrabajoService.listarPorEquipo(equipoId)
+        );
+    }
+
     @PatchMapping("/ordenes/{id}/tecnico")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
     public ResponseEntity<OrdenTrabajoResponse> asignarTecnico(
@@ -71,6 +100,7 @@ public class OrdenTrabajoController {
             ordenTrabajoService.asignarTecnico(
                 id,
                 request.tecnicoId(),
+                request.motivo(),
                 usuarioId(jwt)
             )
         );

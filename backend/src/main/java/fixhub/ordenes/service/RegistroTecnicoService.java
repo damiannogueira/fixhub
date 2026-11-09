@@ -4,6 +4,7 @@ import fixhub.autenticacion.entity.NombreRol;
 import fixhub.autenticacion.entity.Usuario;
 import fixhub.autenticacion.service.UsuarioService;
 import fixhub.ordenes.dto.CrearRegistroTecnicoRequest;
+import fixhub.ordenes.dto.RegistroTecnicoClienteResponse;
 import fixhub.ordenes.dto.RegistroTecnicoResponse;
 import fixhub.ordenes.entity.NombreEstadoOrden;
 import fixhub.ordenes.entity.OrdenTrabajo;
@@ -86,6 +87,29 @@ public class RegistroTecnicoService {
         );
 
         return buscarRegistros(ordenId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RegistroTecnicoClienteResponse> listarPropiosCliente(
+        Long ordenId,
+        Long usuarioId
+    ) {
+        // La propiedad se comprueba con el usuario autenticado: no se revelan órdenes ajenas.
+        ordenTrabajoService.buscarPropiaCliente(
+            ordenId,
+            usuarioId
+        );
+
+        return registroTecnicoRepository
+            .findAllByOrdenIdOrderByFechaAscIdAsc(ordenId)
+            .stream()
+            .map(registro -> new RegistroTecnicoClienteResponse(
+                registro.getId(),
+                registro.getOrden().getId(),
+                registro.getTareaRealizada(),
+                registro.getFecha()
+            ))
+            .toList();
     }
 
     private List<RegistroTecnicoResponse> buscarRegistros(

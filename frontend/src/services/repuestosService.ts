@@ -6,6 +6,15 @@ export function listarRepuestos(nombre?: string): Promise<Repuesto[]> {
   return apiRequest<Repuesto[]>(`/repuestos${query}`);
 }
 
+/** Solo Administrador: incluye repuestos inactivos. */
+export function listarTodosRepuestos(): Promise<Repuesto[]> {
+  return apiRequest<Repuesto[]>('/repuestos/todos');
+}
+
+export function activarRepuesto(id: number): Promise<Repuesto> {
+  return apiRequest<Repuesto>(`/repuestos/${id}/activar`, { method: 'PATCH' });
+}
+
 export function listarRepuestosConStockBajo(): Promise<Repuesto[]> {
   return apiRequest<Repuesto[]>('/repuestos/stock-bajo');
 }

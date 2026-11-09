@@ -72,6 +72,7 @@ Las siguientes reglas definen el comportamiento esperado del sistema dentro del 
 - Cada equipo estará asociado a un único cliente, mientras que un cliente podrá tener uno o varios equipos.
 - Cada orden de trabajo tendrá un único técnico responsable. La participación de múltiples técnicos en una misma orden queda fuera del alcance del MVP.
 - Una orden podrá crearse inicialmente sin técnico responsable mientras permanezca en estado `RECIBIDA`, pero deberá tener uno asignado antes de pasar a `EN_DIAGNOSTICO`.
+- El técnico responsable podrá ser asignado por el Administrador o por el Recepcionista. Una vez asignado, solamente el Administrador podrá cambiarlo, indicando el motivo del cambio, y únicamente mientras la reparación no haya finalizado.
 - El Técnico solamente podrá realizar acciones técnicas sobre las órdenes que tenga asignadas.
 - Cada orden podrá tener como máximo un diagnóstico.
 - El diagnóstico podrá modificarse cuando corresponda, pero no se manejarán versiones independientes dentro del MVP.
@@ -82,7 +83,8 @@ Las siguientes reglas definen el comportamiento esperado del sistema dentro del 
 ### Presupuestos
 
 - Cada orden que requiera presupuesto podrá tener como máximo un presupuesto.
-- El presupuesto podrá modificarse mientras se encuentre pendiente de la decisión del cliente.
+- El presupuesto podrá modificarse mientras sea un borrador, es decir, antes de publicarlo al cliente. Una vez publicado ya no podrá modificarse, de modo que el cliente aprueba o rechaza exactamente lo que se le publicó.
+- El presupuesto solamente podrá crearse, modificarse y publicarse mientras la orden se encuentre en `EN_DIAGNOSTICO`.
 - Una vez aprobado o rechazado, el presupuesto quedará cerrado y no se manejarán versiones independientes dentro del MVP.
 - El total del presupuesto se calculará a partir de la mano de obra y de los repuestos incluidos.
 - Solamente el cliente correspondiente podrá aprobar o rechazar su propio presupuesto.
@@ -131,6 +133,7 @@ El Administrador será responsable de la gestión general del sistema. Podrá:
 - Crear y gestionar cuentas con roles Administrador, Recepcionista y Técnico.
 - Registrar, editar y consultar clientes y equipos.
 - Crear órdenes de trabajo, administrar sus datos de recepción y asignar técnicos.
+- Cambiar el técnico responsable de una orden que ya lo tiene asignado, indicando el motivo.
 - Consultar todas las órdenes de trabajo.
 - Crear, editar y publicar presupuestos, pero no aprobarlos ni rechazarlos en nombre del cliente.
 - Registrar, editar y consultar repuestos.
@@ -147,9 +150,9 @@ El Recepcionista estará orientado principalmente a la atención del cliente y a
 - Registrar, editar y consultar clientes y equipos.
 - Crear una cuenta de acceso únicamente con rol Cliente cuando registre a un cliente que todavía no posea una, o reutilizar la existente.
 - Crear órdenes de trabajo y registrar la información de recepción.
-- Asignar o cambiar el técnico responsable.
+- Asignar el técnico responsable de las órdenes que todavía no lo tienen. El cambio de un técnico ya asignado corresponde al Administrador.
 - Consultar las órdenes de trabajo.
-- Crear, editar y publicar presupuestos mientras se encuentren pendientes de la decisión del cliente.
+- Crear, editar y publicar presupuestos mientras sean borradores, antes de publicarlos al cliente.
 - Consultar el catálogo de repuestos y su disponibilidad.
 - Marcar órdenes como listas para retirar.
 - Registrar la entrega del equipo.
@@ -204,7 +207,7 @@ Los estados definidos para el MVP son:
 
 La asignación de un técnico responsable no se considera un estado de la orden. Una orden podrá crearse sin técnico mientras permanezca en `RECIBIDA`, pero deberá tener uno asignado antes de pasar a `EN_DIAGNOSTICO`.
 
-La asignación o cambio del técnico responsable deberá quedar registrada para conservar la trazabilidad de la orden.
+La asignación o cambio del técnico responsable deberá quedar registrada para conservar la trazabilidad de la orden. Asignar el técnico por primera vez le corresponde al Administrador o al Recepcionista; cambiar un técnico ya asignado solo puede hacerlo el Administrador, indicando el motivo, mientras la reparación no haya finalizado. El registro conserva el usuario responsable, la fecha, los técnicos involucrados y el motivo del cambio.
 
 Los estados propios del presupuesto se gestionarán de manera independiente y no se duplicarán como estados de la orden de trabajo.
 
@@ -361,22 +364,21 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-La Segunda Entrega de diseño y documentación se encuentra completada. El proyecto inició la implementación del backend y actualmente cuenta con:
+La Segunda Entrega de diseño y documentación se encuentra completada. El MVP cuenta con backend (Spring Boot) y frontend (TypeScript con Vite) funcionales para los cinco módulos:
 
-- Base técnica de Spring Boot.
-- Autenticación, usuarios y roles.
-- Seguridad mediante JWT y cambio obligatorio de clave.
-- Gestión de clientes y equipos con acceso propio del Cliente.
-- Núcleo de órdenes de trabajo, con estados, asignación de Técnicos,
-  cancelación y acceso propio.
-- Trazabilidad mínima de las operaciones realizadas sobre las órdenes.
-- Gestión del diagnóstico único de cada orden, con acceso controlado
-  según rol y propiedad.
-- Registro cronológico de tareas y observaciones técnicas durante la
-  reparación.
-- CRUD básico de repuestos con autorización por roles.
+- **Autenticación, usuarios y roles:** inicio de sesión con JWT, cambio obligatorio de la clave temporal, y alta, edición, desactivación y asignación de roles de usuarios por parte del Administrador.
+- **Clientes y equipos:** alta de clientes con su cuenta de acceso, edición de sus datos, gestión de equipos, historial de reparaciones y acceso del Cliente a su propia información.
+- **Órdenes de trabajo:** flujo de estados, asignación y cambio de técnico con motivo, cancelación, historial de cambios, diagnóstico único, tareas y observaciones técnicas, y seguimiento de la reparación por parte del Cliente.
+- **Presupuestos y aprobación:** armado con mano de obra y repuestos, publicación, y aprobación o rechazo por parte del Cliente. La reparación no puede iniciarse sin el presupuesto aprobado.
+- **Inventario y stock:** repuestos (incluidos los inactivos), entradas, ajustes, consumos reales, movimientos de stock y alerta de stock bajo.
+- **Dashboard** con indicadores básicos de órdenes e inventario.
+- **Interfaz web adaptable** con vistas diferenciadas para Administrador, Recepcionista, Técnico y Cliente.
 
-Presupuestos, inventario completo, dashboard y frontend continúan pendientes.
+Pendiente:
+
+- Despliegue en los servicios definidos.
+- Scripts de creación del esquema completo de la base de datos. Hoy el backend no genera las tablas (`ddl-auto=none`) y `docs/sql` solo incluye las de inventario y presupuestos.
+- Pruebas automáticas del frontend.
 
 ## Instalación y ejecución
 
@@ -420,6 +422,19 @@ cd backend
 ./mvnw test
 ./mvnw verify
 ```
+
+### Frontend
+
+Requiere Node.js con npm. Desde la raíz del repositorio:
+
+```bash
+cd frontend
+npm install
+npm run dev
+npm run build
+```
+
+Por defecto el frontend consume la API en `http://localhost:8080/api`. Se puede cambiar con la variable `VITE_API_BASE_URL`. El backend admite solicitudes desde `http://localhost:5173`, el puerto por defecto del servidor de desarrollo de Vite.
 
 ## Trabajo Final Integrador
 

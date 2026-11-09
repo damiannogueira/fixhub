@@ -79,10 +79,14 @@ function renderStatusSummary(orders: OrdenTrabajo[]): HTMLElement {
 }
 
 function getDashboardRole(): string {
-  const roles = getAuthState().roles;
-  if (roles.includes('RECEPCIONISTA')) return 'Recepcionista';
-  if (roles.includes('TECNICO')) return 'Técnico';
-  return 'Administrador';
+  const labels: Partial<Record<string, string>> = {
+    ADMINISTRADOR: 'Administrador',
+    RECEPCIONISTA: 'Recepcionista',
+    TECNICO: 'Técnico',
+  };
+  // Quien acumula roles los ve todos en el saludo.
+  const names = getAuthState().roles.flatMap((role) => labels[role] ?? []);
+  return names.join(' / ') || 'Administrador';
 }
 
 function formatStatus(status: EstadoOrden): string {

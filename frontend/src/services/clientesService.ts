@@ -12,3 +12,17 @@ export function obtenerMiPerfil(): Promise<Cliente> {
 export function obtenerCliente(id: number): Promise<Cliente> {
   return apiRequest<Cliente>(`/clientes/${id}`);
 }
+
+export type ActualizarClienteRequest = {
+  nombre: string;
+  apellido: string;
+  dni?: string;
+  direccion?: string;
+};
+
+export function actualizarCliente(id: number, request: ActualizarClienteRequest): Promise<Cliente> {
+  return apiRequest<Cliente>(`/clientes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(request),
+  });
+}

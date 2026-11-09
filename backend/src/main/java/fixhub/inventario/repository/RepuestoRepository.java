@@ -24,6 +24,9 @@ public interface RepuestoRepository extends JpaRepository<Repuesto, Long> {
 
     List<Repuesto> findAllByActivoTrueOrderByNombreAsc();
 
+    // Catálogo completo (activos e inactivos) para el Administrador.
+    List<Repuesto> findAllByOrderByActivoDescNombreAsc();
+
     List<Repuesto> findByNombreContainingIgnoreCaseAndActivoTrueOrderByNombreAsc(
         String nombre
     );

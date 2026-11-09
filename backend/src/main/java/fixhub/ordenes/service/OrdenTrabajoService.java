@@ -9,6 +9,7 @@ import fixhub.clientes.service.EquipoService;
 import fixhub.ordenes.dto.ClienteOrdenResponse;
 import fixhub.ordenes.dto.CrearOrdenTrabajoRequest;
 import fixhub.ordenes.dto.EquipoOrdenResponse;
+import fixhub.ordenes.dto.HistorialOrdenResponse;
 import fixhub.ordenes.dto.OrdenClienteResponse;
 import fixhub.ordenes.dto.OrdenTrabajoResponse;
 import fixhub.ordenes.entity.EstadoOrden;
@@ -19,11 +20,15 @@ import fixhub.ordenes.entity.TipoEventoOrden;
 import fixhub.ordenes.exception.EstadoOrdenNoEncontradoException;
 import fixhub.ordenes.exception.OrdenNoCancelableException;
 import fixhub.ordenes.exception.OrdenTrabajoNoEncontradaException;
+import fixhub.ordenes.exception.PresupuestoNoAprobadoException;
 import fixhub.ordenes.exception.TecnicoRequeridoException;
 import fixhub.ordenes.exception.TransicionEstadoInvalidaException;
 import fixhub.ordenes.repository.EstadoOrdenRepository;
 import fixhub.ordenes.repository.HistorialOrdenRepository;
 import fixhub.ordenes.repository.OrdenTrabajoRepository;
+import fixhub.presupuestos.entity.EstadoPresupuesto;
+import fixhub.presupuestos.entity.Presupuesto;
+import fixhub.presupuestos.repository.PresupuestoRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -44,24 +50,39 @@ public class OrdenTrabajoService {
             NombreEstadoOrden.APROBADA
         );
 
+    // Una vez finalizada la reparación el responsable ya no cambia.
+    private static final Set<NombreEstadoOrden> ESTADOS_SIN_CAMBIO_DE_TECNICO =
+        EnumSet.of(
+            NombreEstadoOrden.FINALIZADA,
+            NombreEstadoOrden.LISTA_PARA_RETIRAR,
+            NombreEstadoOrden.ENTREGADA,
+            NombreEstadoOrden.CANCELADA
+        );
+
+    // Separa, en el comentario del historial, los técnicos involucrados del motivo del cambio.
+    static final String SEPARADOR_MOTIVO = " | Motivo: ";
+
     private final OrdenTrabajoRepository ordenTrabajoRepository;
     private final EstadoOrdenRepository estadoOrdenRepository;
     private final HistorialOrdenRepository historialOrdenRepository;
     private final EquipoService equipoService;
     private final UsuarioService usuarioService;
+    private final PresupuestoRepository presupuestoRepository;
 
     public OrdenTrabajoService(
         OrdenTrabajoRepository ordenTrabajoRepository,
         EstadoOrdenRepository estadoOrdenRepository,
         HistorialOrdenRepository historialOrdenRepository,
         EquipoService equipoService,
-        UsuarioService usuarioService
+        UsuarioService usuarioService,
+        PresupuestoRepository presupuestoRepository
     ) {
         this.ordenTrabajoRepository = ordenTrabajoRepository;
         this.estadoOrdenRepository = estadoOrdenRepository;
         this.historialOrdenRepository = historialOrdenRepository;
         this.equipoService = equipoService;
         this.usuarioService = usuarioService;
+        this.presupuestoRepository = presupuestoRepository;
     }
 
     @Transactional
@@ -117,17 +138,80 @@ public class OrdenTrabajoService {
         return convertirAResponse(buscarEntidadPorId(id));
     }
 
+    /** Reparaciones (actuales y anteriores) de un cliente, de la más reciente a la más antigua. */
+    @Transactional(readOnly = true)
+    public List<OrdenTrabajoResponse> listarPorCliente(Long clienteId) {
+        return ordenTrabajoRepository
+            .findAllByEquipoClienteIdOrderByFechaIngresoDescIdDesc(clienteId)
+            .stream()
+            .map(this::convertirAResponse)
+            .toList();
+    }
+
+    /** Reparaciones (actuales y anteriores) de un equipo, de la más reciente a la más antigua. */
+    @Transactional(readOnly = true)
+    public List<OrdenTrabajoResponse> listarPorEquipo(Long equipoId) {
+        equipoService.buscarEntidadPorId(equipoId);
+        return ordenTrabajoRepository
+            .findAllByEquipoIdOrderByFechaIngresoDescIdDesc(equipoId)
+            .stream()
+            .map(this::convertirAResponse)
+            .toList();
+    }
+
+    /** Cambios relevantes de la orden, en orden cronológico. */
+    @Transactional(readOnly = true)
+    public List<HistorialOrdenResponse> listarHistorial(Long ordenId) {
+        buscarEntidadPorId(ordenId);
+        return historialOrdenRepository
+            .findAllByOrdenIdOrderByFechaAscIdAsc(ordenId)
+            .stream()
+            .map(this::convertirHistorial)
+            .toList();
+    }
+
+    private HistorialOrdenResponse convertirHistorial(HistorialOrden evento) {
+        Usuario usuario = evento.getUsuario();
+        String nombre = usuario.getEmail() != null && !usuario.getEmail().isBlank()
+            ? usuario.getEmail().split("@")[0]
+            : usuario.getTelefono();
+        return new HistorialOrdenResponse(
+            evento.getId(),
+            evento.getTipoEvento(),
+            evento.getEstadoAnterior() == null
+                ? null
+                : evento.getEstadoAnterior().getNombre(),
+            evento.getEstadoNuevo() == null
+                ? null
+                : evento.getEstadoNuevo().getNombre(),
+            evento.getComentario(),
+            usuario.getId(),
+            nombre,
+            evento.isVisibleCliente(),
+            evento.getFecha()
+        );
+    }
+
+    /**
+     * Asigna el técnico responsable de la orden.
+     *
+     * <p>Asignar el técnico por primera vez le corresponde al Administrador o
+     * al Recepcionista. Cambiar un técnico ya asignado solo puede hacerlo el
+     * Administrador, indicando el motivo, y mientras la reparación no haya
+     * finalizado. El cambio queda registrado en el historial de la orden.
+     */
     @Transactional
     public OrdenTrabajoResponse asignarTecnico(
         Long ordenId,
         Long tecnicoId,
+        String motivo,
         Long actorId
     ) {
         OrdenTrabajo orden = buscarEntidadPorId(ordenId);
-        if (orden.getEstado().isEstadoFinal()) {
-            throw new TransicionEstadoInvalidaException(
-                orden.getEstado().getNombre(),
-                orden.getEstado().getNombre()
+        if (ESTADOS_SIN_CAMBIO_DE_TECNICO.contains(orden.getEstado().getNombre())) {
+            throw new IllegalStateException(
+                "No se puede asignar ni cambiar el técnico de una orden en estado "
+                    + orden.getEstado().getNombre()
             );
         }
 
@@ -141,6 +225,19 @@ public class OrdenTrabajoService {
         }
 
         Usuario actor = usuarioService.buscarEntidadPorId(actorId);
+        String motivoNormalizado = motivo == null ? "" : motivo.trim();
+        if (tecnicoAnterior != null) {
+            if (!actor.tieneRol(NombreRol.ADMINISTRADOR)) {
+                throw new AccessDeniedException(
+                    "Solo el Administrador puede cambiar el técnico de una orden que ya lo tiene asignado"
+                );
+            }
+            if (motivoNormalizado.isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Ingresá el motivo del cambio de técnico"
+                );
+            }
+        }
         LocalDateTime ahora = LocalDateTime.now();
 
         orden.setTecnico(tecnicoNuevo);
@@ -152,7 +249,8 @@ public class OrdenTrabajoService {
         String comentario = tecnicoAnterior == null
             ? "Técnico asignado: " + tecnicoNuevo.getId()
             : "Técnico anterior: " + tecnicoAnterior.getId()
-                + "; técnico nuevo: " + tecnicoNuevo.getId();
+                + "; técnico nuevo: " + tecnicoNuevo.getId()
+                + SEPARADOR_MOTIVO + motivoNormalizado;
 
         guardarHistorial(
             orden,
@@ -176,12 +274,101 @@ public class OrdenTrabajoService {
     ) {
         OrdenTrabajo orden = buscarEntidadPorId(ordenId);
         Usuario actor = usuarioService.buscarEntidadPorId(actorId);
-        EstadoOrden anterior = orden.getEstado();
 
-        // Solo se permiten transiciones expresas.
-        // Las relacionadas con presupuestos se habilitarán en su módulo.
+        // Solo se permiten transiciones expresas. Las que dependen del
+        // presupuesto (PENDIENTE_APROBACION y APROBADA) no pasan por acá:
+        // las dispara el módulo de presupuestos al publicar y al aprobar.
         validarTransicion(orden, destino, actor);
+        validarPresupuestoParaReparacion(orden, destino);
 
+        return aplicarCambioEstado(orden, destino, actor);
+    }
+
+    /** Publicación del presupuesto: EN_DIAGNOSTICO → PENDIENTE_APROBACION. */
+    @Transactional
+    public OrdenTrabajoResponse registrarPublicacionPresupuesto(
+        Long ordenId,
+        Long actorId
+    ) {
+        OrdenTrabajo orden = buscarEntidadPorId(ordenId);
+        exigirEstado(
+            orden,
+            NombreEstadoOrden.EN_DIAGNOSTICO,
+            NombreEstadoOrden.PENDIENTE_APROBACION
+        );
+        return aplicarCambioEstado(
+            orden,
+            NombreEstadoOrden.PENDIENTE_APROBACION,
+            usuarioService.buscarEntidadPorId(actorId)
+        );
+    }
+
+    /** Aprobación del cliente: PENDIENTE_APROBACION → APROBADA. */
+    @Transactional
+    public OrdenTrabajoResponse registrarAprobacionPresupuesto(
+        Long ordenId,
+        Long actorId
+    ) {
+        OrdenTrabajo orden = buscarEntidadPorId(ordenId);
+        exigirEstado(
+            orden,
+            NombreEstadoOrden.PENDIENTE_APROBACION,
+            NombreEstadoOrden.APROBADA
+        );
+        return aplicarCambioEstado(
+            orden,
+            NombreEstadoOrden.APROBADA,
+            usuarioService.buscarEntidadPorId(actorId)
+        );
+    }
+
+    private void exigirEstado(
+        OrdenTrabajo orden,
+        NombreEstadoOrden requerido,
+        NombreEstadoOrden destino
+    ) {
+        NombreEstadoOrden actual = orden.getEstado().getNombre();
+        if (actual != requerido) {
+            throw new TransicionEstadoInvalidaException(actual, destino);
+        }
+    }
+
+    // Si la orden tiene presupuesto, la reparación solo puede iniciarse
+    // desde APROBADA y con el presupuesto aprobado por el cliente.
+    private void validarPresupuestoParaReparacion(
+        OrdenTrabajo orden,
+        NombreEstadoOrden destino
+    ) {
+        if (destino != NombreEstadoOrden.EN_REPARACION) {
+            return;
+        }
+        NombreEstadoOrden origen = orden.getEstado().getNombre();
+        Optional<Presupuesto> presupuesto =
+            presupuestoRepository.findByOrdenId(orden.getId());
+
+        if (origen == NombreEstadoOrden.EN_DIAGNOSTICO
+            && presupuesto.isPresent()) {
+            throw new PresupuestoNoAprobadoException(
+                "La orden tiene un presupuesto: la reparación solo puede "
+                    + "iniciarse cuando el cliente lo apruebe"
+            );
+        }
+        if (origen == NombreEstadoOrden.APROBADA
+            && presupuesto
+                .map(p -> p.getEstado() != EstadoPresupuesto.APROBADO)
+                .orElse(true)) {
+            throw new PresupuestoNoAprobadoException(
+                "La reparación requiere un presupuesto aprobado por el cliente"
+            );
+        }
+    }
+
+    private OrdenTrabajoResponse aplicarCambioEstado(
+        OrdenTrabajo orden,
+        NombreEstadoOrden destino,
+        Usuario actor
+    ) {
+        EstadoOrden anterior = orden.getEstado();
         EstadoOrden nuevo = buscarEstado(destino);
         LocalDateTime ahora = LocalDateTime.now();
         orden.setEstado(nuevo);
@@ -297,17 +484,6 @@ public class OrdenTrabajoService {
         Usuario actor
     ) {
         NombreEstadoOrden origen = orden.getEstado().getNombre();
-        if (actor.tieneRol(NombreRol.CLIENTE)
-            && origen == NombreEstadoOrden.PENDIENTE_APROBACION
-            && destino == NombreEstadoOrden.APROBADA) {
-            return;
-        }
-        if (actor.tieneRol(NombreRol.ADMINISTRADOR)) {
-            if (destino == NombreEstadoOrden.CANCELADA) {
-                throw new TransicionEstadoInvalidaException(origen, destino);
-            }
-            return;
-        }
         boolean tecnica = esTransicionTecnica(origen, destino);
         boolean recepcion = esTransicionRecepcion(origen, destino);
 
@@ -320,9 +496,13 @@ public class OrdenTrabajoService {
             return;
         }
 
-        if (!actor.tieneRol(NombreRol.RECEPCIONISTA)) {
+        // Las tareas técnicas quedan reservadas al Técnico asignado, incluso
+        // para el Administrador; las de recepción y entrega las realiza
+        // Recepción o Administración.
+        if (!actor.tieneRol(NombreRol.RECEPCIONISTA)
+            && !actor.tieneRol(NombreRol.ADMINISTRADOR)) {
             throw new AccessDeniedException(
-                "La transición debe realizarla un Recepcionista"
+                "La transición debe realizarla un Recepcionista o un Administrador"
             );
         }
     }
@@ -347,9 +527,7 @@ public class OrdenTrabajoService {
         NombreEstadoOrden origen,
         NombreEstadoOrden destino
     ) {
-        return (origen == NombreEstadoOrden.EN_DIAGNOSTICO
-                && destino == NombreEstadoOrden.PENDIENTE_APROBACION)
-            || (origen == NombreEstadoOrden.FINALIZADA
+        return (origen == NombreEstadoOrden.FINALIZADA
                 && destino == NombreEstadoOrden.LISTA_PARA_RETIRAR)
             || (origen == NombreEstadoOrden.LISTA_PARA_RETIRAR
                 && destino == NombreEstadoOrden.ENTREGADA);

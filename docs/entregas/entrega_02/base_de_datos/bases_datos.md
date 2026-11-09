@@ -408,7 +408,7 @@ Estas características hacen que un modelo relacional sea más adecuado que uno 
 
 La tabla `ordenes_trabajo` concentra las referencias al equipo, al técnico responsable y al estado, ya que es el núcleo del proceso de reparación. El cliente se obtiene a través de la relación orden → equipo → cliente. Esto evita guardar en la orden dos referencias que podrían quedar inconsistentes entre sí.
 
-El campo `tecnico_id` es opcional mientras la orden permanece en `RECIBIDA`, porque puede crearse sin técnico. Antes de pasar a `EN_DIAGNOSTICO` debe tener uno asignado. De esta manera, cada orden tiene como máximo un técnico responsable y un técnico puede estar a cargo de varias órdenes.
+El campo `tecnico_id` es opcional mientras la orden permanece en `RECIBIDA`, porque puede crearse sin técnico. Antes de pasar a `EN_DIAGNOSTICO` debe tener uno asignado. De esta manera, cada orden tiene como máximo un técnico responsable y un técnico puede estar a cargo de varias órdenes. Cuando el Administrador cambia un técnico ya asignado, `tecnico_id` pasa a apuntar al nuevo técnico y el evento queda en `historial_ordenes`: el campo `comentario` conserva el técnico anterior, el nuevo y el motivo del cambio, y `usuario_id` identifica a quien lo realizó.
 
 Las entidades relacionadas se modelaron como tablas separadas vinculadas por clave foránea, lo que permite:
 

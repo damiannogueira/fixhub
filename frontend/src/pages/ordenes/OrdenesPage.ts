@@ -18,11 +18,14 @@ import {
   obtenerDiagnosticoTecnico,
 } from '../../services/ordenesService';
 import { listarRepuestos } from '../../services/repuestosService';
+import { listarMisPresupuestosTecnico } from '../../services/presupuestosService';
+import type { EstadoPresupuesto } from '../../types/presupuesto';
 import { listarTecnicos } from '../../services/usuariosService';
 import type { EstadoOrden, OrdenTrabajo } from '../../types/orden';
 import type { Usuario } from '../../types/usuario';
 import { hasAnyRole } from '../../utils/authState';
 import { router } from '../../router/router';
+import { isHybridTechnician, wantsTechnicianView } from '../../utils/technicianView';
 
 const allOperationalStatuses: EstadoOrden[] = [
   'RECIBIDA',
@@ -35,17 +38,37 @@ const allOperationalStatuses: EstadoOrden[] = [
   'ENTREGADA',
 ];
 
+// Estado del presupuesto de cada orden del técnico: define si puede iniciar la reparación.
+let budgetStatusByOrder = new Map<number, EstadoPresupuesto>();
+
 export const OrdenesPage = {
   render(): HTMLElement {
-    if (hasAnyRole(['TECNICO']) && !hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA'])) {
+    if (wantsTechnicianView()) {
       return renderTechnicianOrders();
     }
     const content = document.createElement('div');
     content.innerHTML = `
-      <div class="page-heading"><div><p class="muted">Seguimiento del taller</p><h2>Órdenes de trabajo</h2></div><button class="btn btn-primary" id="new-order">+ Nueva orden</button></div>
+      <div class="page-heading"><div><p class="muted">Seguimiento del taller</p><h2>Órdenes de trabajo</h2></div><div class="form-actions">${isHybridTechnician() ? '<a class="btn btn-secondary" href="#/ordenes?vista=tecnico">Mis órdenes asignadas</a>' : ''}<button class="btn btn-primary" id="new-order">+ Nueva orden</button></div></div>
       <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar orden" placeholder="Buscar orden, cliente o equipo..." /><select class="form-input filter-select" id="status-filter" aria-label="Filtrar por estado"><option value="">Todos los estados</option>${allOperationalStatuses.concat('CANCELADA').map((status) => `<option class="${statusClass(status)}" value="${status}">${formatStatus(status)}</option>`).join('')}</select></div></section>
       <section class="panel table-panel"><div class="table-state">Cargando órdenes...</div></section>
       <section class="panel order-form-panel" hidden></section>
+      <div class="modal-backdrop" id="reassignment-modal" hidden>
+        <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="reassignment-title">
+          <h3 id="reassignment-title">Cambiar técnico responsable</h3>
+          <p class="muted">La orden ya tiene un técnico asignado. Indicá el motivo del cambio: quedará registrado en el historial.</p>
+          <form id="reassignment-form" class="user-form">
+            <div class="form-group">
+              <label class="form-label" for="reassignment-reason">Motivo</label>
+              <textarea class="form-input" id="reassignment-reason" name="motivo" rows="4" maxlength="500" required></textarea>
+            </div>
+            <p class="form-alert" id="reassignment-error" hidden></p>
+            <div class="form-actions">
+              <button class="btn btn-secondary" type="button" id="cancel-reassignment">Volver</button>
+              <button class="btn btn-primary" type="submit">Confirmar cambio</button>
+            </div>
+          </form>
+        </section>
+      </div>
       <div class="modal-backdrop" id="cancellation-modal" hidden>
         <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="cancellation-title">
           <h3 id="cancellation-title">Cancelar orden</h3>
@@ -67,6 +90,7 @@ export const OrdenesPage = {
     const tablePanel = content.querySelector('.table-panel') as HTMLElement;
     const formPanel = content.querySelector('.order-form-panel') as HTMLElement;
     const cancellationModal = content.querySelector('#cancellation-modal') as HTMLElement;
+    const reassignmentModal = content.querySelector('#reassignment-modal') as HTMLElement;
     const search = content.querySelector('.search-input') as HTMLInputElement;
     const statusFilter = content.querySelector('#status-filter') as HTMLSelectElement;
     statusFilter.addEventListener('change', () => {
@@ -115,6 +139,15 @@ export const OrdenesPage = {
           const technicianId = Number(select.value);
           const orderId = Number(select.dataset.orderTechnician);
           if (!technicianId) return;
+          const currentTechnicianId = Number(select.dataset.currentTechnician);
+          if (currentTechnicianId) {
+            // Cambiar un técnico ya asignado exige un motivo y solo lo hace el Administrador.
+            if (technicianId === currentTechnicianId) return;
+            void requestReassignment(reassignmentModal, orderId, technicianId)
+              .then(() => loadOrders(tablePanel, (loaded) => { orders = loaded; updateTable(); }))
+              .catch(() => updateTable());
+            return;
+          }
           select.disabled = true;
           void asignarTecnico(orderId, technicianId)
             .then(() => loadOrders(tablePanel, (loaded) => { orders = loaded; updateTable(); }))
@@ -130,7 +163,7 @@ export const OrdenesPage = {
     function renderTechnicianOrders(): HTMLElement {
       const content = document.createElement('div');
       content.innerHTML = `
-        <div class="page-heading"><div><p class="muted">Trabajo asignado</p><h2>Mis órdenes</h2></div></div>
+        <div class="page-heading"><div><p class="muted">Trabajo asignado</p><h2>Mis órdenes</h2></div>${isHybridTechnician() ? '<a class="btn btn-secondary" href="#/ordenes">Ver todas las órdenes</a>' : ''}</div>
         <section class="panel"><div class="toolbar"><input class="form-input search-input" aria-label="Buscar orden" placeholder="Buscar por orden, cliente o equipo..." /></div></section>
         <section class="technical-orders"><div class="table-state">Cargando órdenes asignadas...</div></section>
         <div class="modal-backdrop" id="technical-task-modal" hidden>
@@ -154,7 +187,6 @@ export const OrdenesPage = {
         button.addEventListener('click', () => { (button.closest('.modal-backdrop') as HTMLElement).hidden = true; });
       });
       let orders: OrdenTrabajo[] = [];
-
       const render = () => {
         const query = search.value.trim().toLowerCase();
         const filtered = orders.filter((order) => {
@@ -169,14 +201,19 @@ export const OrdenesPage = {
           card.addEventListener('click', (event) => {
             const target = event.target as HTMLElement;
             if (target.closest('button, a, details, select, input, textarea')) return;
-            router.navigate(`/ordenes/detalle?id=${card.dataset.orderId}`);
+            router.navigate(`/ordenes/detalle?id=${card.dataset.orderId}&vista=tecnico`);
           });
         });
       };
 
       const load = async () => {
         try {
-          orders = await listarMisOrdenesTecnico();
+          const [assignedOrders, budgets] = await Promise.all([
+            listarMisOrdenesTecnico(),
+            listarMisPresupuestosTecnico(),
+          ]);
+          orders = assignedOrders;
+          budgetStatusByOrder = new Map(budgets.map((budget) => [budget.ordenId, budget.estado]));
           render();
         } catch (error) {
           list.className = 'state-box table-state';
@@ -211,8 +248,16 @@ export const OrdenesPage = {
       }
       if (order.estado === 'EN_DIAGNOSTICO') {
         actions.push('<button type="button" class="action-menu-item" data-action="diagnosis">Registrar diagnóstico</button>');
-        actions.push(`<a class="action-menu-item" href="#/presupuestos?ordenId=${order.id}">Preparar presupuesto</a>`);
-        actions.push('<button type="button" class="action-menu-item" data-action="status" data-status="EN_REPARACION">Iniciar reparación</button>');
+        const budgetStatus = budgetStatusByOrder.get(order.id);
+        if (!budgetStatus) {
+          // Sin presupuesto: se presupuesta o se repara directamente (flujo sin presupuesto).
+          actions.push(`<a class="action-menu-item" href="#/presupuestos?ordenId=${order.id}">Preparar presupuesto</a>`);
+          actions.push('<button type="button" class="action-menu-item" data-action="status" data-status="EN_REPARACION">Iniciar reparación</button>');
+        } else {
+          // Con presupuesto: la reparación espera la aprobación del cliente.
+          actions.push(`<a class="action-menu-item" href="#/presupuestos?ordenId=${order.id}">Editar presupuesto</a>`);
+          actions.push('<span class="action-menu-note">Presupuesto en borrador: debe publicarse y aprobarlo el cliente antes de iniciar la reparación</span>');
+        }
       }
       if (order.estado === 'PENDIENTE_APROBACION') {
         actions.push('<span class="action-menu-note">Esperando decisión del cliente</span>');
@@ -263,7 +308,7 @@ export const OrdenesPage = {
         container.querySelectorAll<HTMLButtonElement>('[data-action="technical-log-view"]').forEach((button) => {
           button.addEventListener('click', () => {
             const card = button.closest<HTMLElement>('.technical-order-card');
-            router.navigate(`/ordenes/detalle?id=${card?.dataset.orderId}`);
+            router.navigate(`/ordenes/detalle?id=${card?.dataset.orderId}&vista=tecnico`);
           });
         });
       });
@@ -374,7 +419,7 @@ function renderOrdersTable(orders: OrdenTrabajo[], technicians: Usuario[]): HTML
   return renderTable(
     ['Orden', 'Cliente', 'Equipo', 'Estado', 'Ingreso', 'Técnico'],
     orders.map((order) => [
-      `<strong>#${order.id}</strong>`,
+      `<a class="text-link" href="#/ordenes/detalle?id=${order.id}" title="Ver detalle de la orden"><strong>#${order.id}</strong></a>`,
       `${escapeHtml(order.cliente.apellido)}, ${escapeHtml(order.cliente.nombre)}`,
       escapeHtml([order.equipo.tipo, order.equipo.marca, order.equipo.modelo].filter(Boolean).join(' ')),
       renderStatusAction(order),
@@ -385,12 +430,20 @@ function renderOrdersTable(orders: OrdenTrabajo[], technicians: Usuario[]): HTML
 }
 
 function renderTechnicianAction(order: OrdenTrabajo, technicians: Usuario[]): string {
-  if (order.estado === 'FINALIZADA' || order.estado === 'ENTREGADA' || order.estado === 'CANCELADA') {
-    const technician = technicians.find((item) => item.id === order.tecnicoId);
-    return technician ? escapeHtml(technicianLabel(technician)) : 'Sin asignar';
-  }
   const assignedTechnician = technicians.find((item) => item.id === order.tecnicoId);
-  return `<select class="form-input technician-select" data-order-technician="${order.id}" aria-label="Asignar técnico">
+  const assignedLabel = assignedTechnician
+    ? escapeHtml(technicianLabel(assignedTechnician))
+    : order.tecnicoId ? `Técnico #${order.tecnicoId}` : 'Sin asignar';
+  // Terminada la reparación el responsable ya no cambia (misma regla que el backend).
+  const closed = ['FINALIZADA', 'LISTA_PARA_RETIRAR', 'ENTREGADA', 'CANCELADA'].includes(order.estado);
+  if (closed) {
+    return assignedLabel;
+  }
+  // Asignar por primera vez: Administración y Recepción. Cambiar un técnico ya asignado: solo el Administrador.
+  if (order.tecnicoId && !hasAnyRole(['ADMINISTRADOR'])) {
+    return `<span title="Solo el Administrador puede cambiar el técnico ya asignado">${assignedLabel}</span>`;
+  }
+  return `<select class="form-input technician-select" data-order-technician="${order.id}" data-current-technician="${order.tecnicoId ?? ''}" aria-label="${order.tecnicoId ? 'Cambiar técnico' : 'Asignar técnico'}">
     <option value="">${assignedTechnician ? escapeHtml(technicianLabel(assignedTechnician)) : 'Sin asignar'}</option>
     ${technicians.map((technician) => `<option value="${technician.id}" ${technician.id === order.tecnicoId ? 'selected' : ''}>${technicianLabel(technician)}</option>`).join('')}
   </select>`;
@@ -408,13 +461,14 @@ function technicianLabel(technician: Usuario): string {
 }
 
 function renderStatusAction(order: OrdenTrabajo): string {
-  const nextStatuses: EstadoOrden[] = hasAnyRole(['ADMINISTRADOR'])
-    ? allOperationalStatuses.filter((status) => status !== order.estado)
-    : [];
-  if (!hasAnyRole(['ADMINISTRADOR']) && order.estado === 'FINALIZADA') {
+  // Mismas reglas que el backend: Administración y Recepción solo realizan
+  // las transiciones de entrega. Las técnicas son del Técnico asignado y las
+  // de presupuesto ocurren al publicarlo y cuando el cliente decide.
+  const nextStatuses: EstadoOrden[] = [];
+  if (order.estado === 'FINALIZADA') {
     nextStatuses.push('LISTA_PARA_RETIRAR');
   }
-  if (!hasAnyRole(['ADMINISTRADOR']) && order.estado === 'LISTA_PARA_RETIRAR') {
+  if (order.estado === 'LISTA_PARA_RETIRAR') {
     nextStatuses.push('ENTREGADA');
   }
   if (hasAnyRole(['ADMINISTRADOR'])
@@ -428,6 +482,58 @@ function renderStatusAction(order: OrdenTrabajo): string {
     <option value="">${formatStatus(order.estado)}</option>
     ${nextStatuses.map((status) => `<option class="${statusClass(status)}" value="${status}">${formatStatus(status)}</option>`).join('')}
   </select>`;
+}
+
+/**
+ * Pide el motivo y cambia el técnico de una orden que ya tenía uno asignado.
+ * Se resuelve al guardarse; se rechaza si la persona vuelve atrás.
+ * Si el backend rechaza el cambio, el modal queda abierto con el mensaje.
+ */
+function requestReassignment(modal: HTMLElement, orderId: number, technicianId: number): Promise<OrdenTrabajo> {
+  const form = modal.querySelector('#reassignment-form') as HTMLFormElement;
+  const reason = modal.querySelector('#reassignment-reason') as HTMLTextAreaElement;
+  const error = modal.querySelector('#reassignment-error') as HTMLElement;
+  const cancelButton = modal.querySelector('#cancel-reassignment') as HTMLButtonElement;
+  const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+  reason.value = '';
+  error.hidden = true;
+  submitButton.disabled = false;
+  modal.hidden = false;
+  reason.focus();
+
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      form.removeEventListener('submit', onSubmit);
+      cancelButton.removeEventListener('click', onCancel);
+      modal.hidden = true;
+    };
+    const onSubmit = async (event: Event) => {
+      event.preventDefault();
+      const motivo = reason.value.trim();
+      if (!motivo) {
+        error.textContent = 'Ingresá el motivo del cambio de técnico.';
+        error.hidden = false;
+        return;
+      }
+      submitButton.disabled = true;
+      error.hidden = true;
+      try {
+        const updated = await asignarTecnico(orderId, technicianId, motivo);
+        cleanup();
+        resolve(updated);
+      } catch (requestError) {
+        error.textContent = requestError instanceof Error ? requestError.message : 'No se pudo cambiar el técnico.';
+        error.hidden = false;
+        submitButton.disabled = false;
+      }
+    };
+    const onCancel = () => {
+      cleanup();
+      reject(new Error('REASIGNACION_CANCELADA'));
+    };
+    form.addEventListener('submit', onSubmit);
+    cancelButton.addEventListener('click', onCancel);
+  });
 }
 
 function requestCancellation(modal: HTMLElement, orderId: number): Promise<OrdenTrabajo> {

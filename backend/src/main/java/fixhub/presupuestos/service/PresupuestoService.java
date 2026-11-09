@@ -37,6 +37,7 @@ public class PresupuestoService {
         if (presupuestoRepository.findByOrdenId(ordenId).isPresent()) throw new EntityExistsException("La orden ya tiene un presupuesto.");
         Usuario actor = usuarioService.buscarEntidadPorId(actorId);
         validarEditor(actor, orden);
+        validarOrdenEnDiagnostico(orden, "crear");
         Presupuesto presupuesto = new Presupuesto(orden, actor, request.costoManoObra());
         reemplazarDetalles(presupuesto, request.detalles());
         return convertir(presupuestoRepository.save(presupuesto));
@@ -51,8 +52,10 @@ public class PresupuestoService {
 
     @Transactional(readOnly = true)
     public List<PresupuestoResponse> listarPropios(Long usuarioId) {
+        // El borrador es interno: el cliente solo ve presupuestos ya publicados o decididos.
         return presupuestoRepository.findAllByOrdenEquipoClienteUsuarioIdOrderByFechaCreacionDesc(usuarioId)
-            .stream().map(this::convertir).toList();
+            .stream().filter(presupuesto -> presupuesto.getEstado() != EstadoPresupuesto.BORRADOR)
+            .map(this::convertir).toList();
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +75,7 @@ public class PresupuestoService {
         Presupuesto presupuesto = buscar(id); Usuario actor = usuarioService.buscarEntidadPorId(actorId);
         validarEditor(actor, presupuesto.getOrden());
         if (presupuesto.getEstado() != EstadoPresupuesto.BORRADOR) throw new IllegalStateException("Solo se puede editar un presupuesto borrador.");
+        validarOrdenEnDiagnostico(presupuesto.getOrden(), "editar");
         presupuesto.setCostoManoObra(request.costoManoObra());
         reemplazarDetalles(presupuesto, request.detalles());
         return convertir(presupuestoRepository.save(presupuesto));
@@ -84,8 +88,9 @@ public class PresupuestoService {
         if (!actor.tieneRol(NombreRol.ADMINISTRADOR) && !actor.tieneRol(NombreRol.RECEPCIONISTA))
             throw new AccessDeniedException("Solo el Administrador o el Recepcionista pueden publicar presupuestos.");
         if (presupuesto.getEstado() != EstadoPresupuesto.BORRADOR) throw new IllegalStateException("Solo se puede publicar un presupuesto borrador.");
+        validarOrdenEnDiagnostico(presupuesto.getOrden(), "publicar");
         presupuesto.publicar(actor);
-        ordenTrabajoService.cambiarEstado(presupuesto.getOrden().getId(), NombreEstadoOrden.PENDIENTE_APROBACION, actorId);
+        ordenTrabajoService.registrarPublicacionPresupuesto(presupuesto.getOrden().getId(), actorId);
         return convertir(presupuestoRepository.save(presupuesto));
     }
 
@@ -95,13 +100,22 @@ public class PresupuestoService {
         if (!cliente.tieneRol(NombreRol.CLIENTE) || !presupuesto.getOrden().getEquipo().getCliente().getUsuario().getId().equals(usuarioId))
             throw new AccessDeniedException("El presupuesto no pertenece al cliente autenticado.");
         if (presupuesto.getEstado() != EstadoPresupuesto.PUBLICADO) throw new IllegalStateException("El presupuesto no está pendiente de decisión.");
+        if (presupuesto.getOrden().getEstado().getNombre() != NombreEstadoOrden.PENDIENTE_APROBACION)
+            throw new IllegalStateException("La orden ya no está esperando la aprobación del presupuesto.");
         if (request.decision() == EstadoPresupuesto.APROBADO) {
-            ordenTrabajoService.cambiarEstado(presupuesto.getOrden().getId(), NombreEstadoOrden.APROBADA, usuarioId);
+            ordenTrabajoService.registrarAprobacionPresupuesto(presupuesto.getOrden().getId(), usuarioId);
         } else if (request.decision() == EstadoPresupuesto.RECHAZADO) {
             ordenTrabajoService.cancelar(presupuesto.getOrden().getId(), "Presupuesto rechazado por el cliente", usuarioId);
         } else throw new IllegalArgumentException("La decisión debe ser APROBADO o RECHAZADO.");
         presupuesto.decidir(cliente, request.decision());
         return convertir(presupuestoRepository.save(presupuesto));
+    }
+
+    // El presupuesto se elabora durante el diagnóstico; después de iniciada la
+    // reparación (o cancelada la orden) ya no puede crearse, editarse ni publicarse.
+    private void validarOrdenEnDiagnostico(OrdenTrabajo orden, String accion) {
+        if (orden.getEstado().getNombre() != NombreEstadoOrden.EN_DIAGNOSTICO)
+            throw new IllegalStateException("Solo se puede " + accion + " un presupuesto mientras la orden está en diagnóstico.");
     }
 
     private void validarEditor(Usuario actor, OrdenTrabajo orden) {
@@ -113,7 +127,11 @@ public class PresupuestoService {
         Usuario actor = usuarioService.buscarEntidadPorId(actorId);
         if (actor.tieneRol(NombreRol.ADMINISTRADOR) || actor.tieneRol(NombreRol.RECEPCIONISTA)) return;
         if (actor.tieneRol(NombreRol.TECNICO) && presupuesto.getOrden().getTecnico() != null && presupuesto.getOrden().getTecnico().getId().equals(actorId)) return;
-        if (actor.tieneRol(NombreRol.CLIENTE) && presupuesto.getOrden().getEquipo().getCliente().getUsuario().getId().equals(actorId)) return;
+        if (actor.tieneRol(NombreRol.CLIENTE) && presupuesto.getOrden().getEquipo().getCliente().getUsuario().getId().equals(actorId)) {
+            // Para el cliente un borrador no existe todavía.
+            if (presupuesto.getEstado() == EstadoPresupuesto.BORRADOR) throw new IllegalArgumentException("La orden no tiene presupuesto.");
+            return;
+        }
         throw new AccessDeniedException("No puede consultar este presupuesto.");
     }
     private Presupuesto buscar(Long id) { return presupuestoRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Presupuesto no encontrado.")); }

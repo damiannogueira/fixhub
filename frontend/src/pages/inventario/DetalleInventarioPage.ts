@@ -1,6 +1,5 @@
 import { renderAppLayout } from '../../components/layout/AppLayout';
-import { listarMovimientos } from '../../services/repuestosService';
-import { listarRepuestos } from '../../services/repuestosService';
+import { listarMovimientos, listarTodosRepuestos } from '../../services/repuestosService';
 
 export const DetalleInventarioPage = {
   render(): HTMLElement {
@@ -15,14 +14,15 @@ export const DetalleInventarioPage = {
       panel.textContent = 'El repuesto solicitado no es válido.';
       return renderAppLayout(content, 'Detalle del repuesto');
     }
-    void Promise.all([listarRepuestos(), listarMovimientos(id)]).then(([parts, movements]) => {
+    // Ruta exclusiva del Administrador: incluye repuestos inactivos.
+    void Promise.all([listarTodosRepuestos(), listarMovimientos(id)]).then(([parts, movements]) => {
       const part = parts.find((item) => item.id === id);
       if (!part) {
         panel.textContent = 'No se encontró el repuesto.';
         return;
       }
       panel.innerHTML = `
-        <div class="panel-header"><div><p class="muted">${escapeHtml(part.codigo)}</p><h3>${escapeHtml(part.nombre)}</h3></div><span class="status-pill ${part.stockActual <= part.stockMinimo ? 'status-cancelada' : 'status-entregada'}">${part.stockActual} unidades</span></div>
+        <div class="panel-header"><div><p class="muted">${escapeHtml(part.codigo)}</p><h3>${escapeHtml(part.nombre)}</h3>${part.activo ? '' : '<p class="muted">Repuesto inactivo: no figura en el catálogo ni puede usarse en presupuestos o consumos.</p>'}</div><span class="status-pill ${part.stockActual <= part.stockMinimo ? 'status-cancelada' : 'status-entregada'}">${part.stockActual} unidades</span></div>
         <p>${escapeHtml(part.descripcion ?? 'Sin descripción.')}</p>
         <h3 class="inventory-detail-title">Movimientos de stock</h3>
         ${movements.length ? `<div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Referencia</th><th>Usuario</th></tr></thead><tbody>${movements.map((movement) => `<tr><td>${formatDate(movement.fecha)}</td><td>${movement.tipo}</td><td>${movement.cantidad}</td><td>${escapeHtml(movement.motivo)}</td><td>${escapeHtml(movement.referencia ?? '—')}</td><td>${escapeHtml(movement.usuarioNombre)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">No hay movimientos registrados para este repuesto.</p>'}

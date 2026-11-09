@@ -117,7 +117,7 @@ Incluye la administración de clientes, sus datos de contacto, equipos, la relac
 **Responsabilidades principales:**
 - Crear órdenes de trabajo asociadas a un cliente y a un equipo.
 - Registrar el problema informado al momento de la recepción.
-- Asignar un técnico responsable.
+- Asignar un técnico responsable y registrar su eventual cambio.
 - Gestionar los cambios de estado de la orden.
 - Registrar y actualizar el diagnóstico.
 - Registrar observaciones técnicas y tareas realizadas.
@@ -134,6 +134,7 @@ Incluye la administración de clientes, sus datos de contacto, equipos, la relac
 **Reglas relevantes:**
 - Cada orden tendrá un único técnico responsable.
 - La orden podrá crearse sin técnico responsable mientras permanezca en `RECIBIDA`, pero deberá tener un técnico asignado antes de pasar a `EN_DIAGNOSTICO`.
+- El Administrador o el Recepcionista podrán asignar el técnico responsable. Una vez asignado, solamente el Administrador podrá cambiarlo, indicando el motivo, y únicamente mientras la reparación no haya finalizado. El cambio queda registrado en el historial de la orden.
 - Cada orden podrá tener como máximo un diagnóstico.
 - El técnico solamente podrá realizar acciones técnicas sobre las órdenes que tenga asignadas.
 - La orden deberá respetar el flujo de estados definido.
@@ -171,7 +172,8 @@ Incluye el ciclo operativo de la reparación, la asignación del técnico, estad
 
 **Reglas relevantes:**
 - Cada orden que requiera presupuesto podrá tener como máximo un presupuesto.
-- El presupuesto podrá modificarse mientras se encuentre pendiente de la decisión del cliente.
+- El presupuesto podrá modificarse mientras sea un borrador, es decir, antes de publicarlo al cliente. Una vez publicado ya no podrá modificarse.
+- El presupuesto solamente podrá crearse, modificarse y publicarse mientras la orden se encuentre en `EN_DIAGNOSTICO`.
 - Si el cliente rechaza un presupuesto requerido, la orden no podrá continuar hacia reparación y pasará a `CANCELADA`.
 - Una vez aprobado o rechazado, quedará cerrado y no se manejarán versiones independientes dentro del MVP.
 - El total se calculará a partir de la mano de obra y los repuestos incluidos.

@@ -1,6 +1,7 @@
 package fixhub.ordenes.controller;
 
 import fixhub.ordenes.dto.CrearRegistroTecnicoRequest;
+import fixhub.ordenes.dto.RegistroTecnicoClienteResponse;
 import fixhub.ordenes.dto.RegistroTecnicoResponse;
 import fixhub.ordenes.service.RegistroTecnicoService;
 import jakarta.validation.Valid;
@@ -78,6 +79,23 @@ public class RegistroTecnicoController {
         ) {
         return ResponseEntity.ok(
             registroTecnicoService.listarAsignados(
+                id,
+                usuarioId(jwt)
+            )
+        );
+    }
+
+    @GetMapping(
+        "/clientes/me/ordenes/{id}/registros-tecnicos"
+    )
+    @PreAuthorize("hasRole('CLIENTE')")
+    public ResponseEntity<List<RegistroTecnicoClienteResponse>>
+        listarPropiosCliente(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt
+        ) {
+        return ResponseEntity.ok(
+            registroTecnicoService.listarPropiosCliente(
                 id,
                 usuarioId(jwt)
             )

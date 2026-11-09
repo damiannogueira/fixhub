@@ -5,6 +5,7 @@ import fixhub.autenticacion.entity.Rol;
 import fixhub.autenticacion.entity.Usuario;
 import fixhub.autenticacion.service.UsuarioService;
 import fixhub.ordenes.dto.CrearRegistroTecnicoRequest;
+import fixhub.ordenes.dto.RegistroTecnicoClienteResponse;
 import fixhub.ordenes.dto.RegistroTecnicoResponse;
 import fixhub.ordenes.entity.EstadoOrden;
 import fixhub.ordenes.entity.NombreEstadoOrden;
@@ -278,6 +279,51 @@ class RegistroTecnicoServiceTest {
             .buscarAsignada(10L, 42L);
     }
 
+    @Test
+    void clienteDebeVerTareasSinObservacionInternaNiTecnico() {
+        Usuario tecnico = crearTecnico(42L, "tecnico@fixhub.com");
+        OrdenTrabajo orden = crearOrden(
+            10L,
+            NombreEstadoOrden.EN_REPARACION,
+            tecnico
+        );
+        RegistroTecnico registro = crearRegistro(
+            100L,
+            orden,
+            tecnico,
+            "Cambio de pantalla",
+            11,
+            "Cliente dejó el equipo mojado, revisar garantía"
+        );
+        when(
+            registroTecnicoRepository
+                .findAllByOrdenIdOrderByFechaAscIdAsc(10L)
+        ).thenReturn(List.of(registro));
+
+        List<RegistroTecnicoClienteResponse> resultado =
+            registroTecnicoService.listarPropiosCliente(10L, 5L);
+
+        assertThat(resultado)
+            .extracting(RegistroTecnicoClienteResponse::tareaRealizada)
+            .containsExactly("Cambio de pantalla");
+        // El DTO del cliente no declara observación ni datos del técnico.
+        assertThat(RegistroTecnicoClienteResponse.class.getRecordComponents())
+            .extracting(component -> component.getName())
+            .containsExactly("id", "ordenId", "tareaRealizada", "fecha");
+        verify(ordenTrabajoService).buscarPropiaCliente(10L, 5L);
+    }
+
+    @Test
+    void clienteAjenoNoDebeListarTareas() {
+        when(ordenTrabajoService.buscarPropiaCliente(10L, 99L))
+            .thenThrow(new AccessDeniedException("La orden no pertenece al cliente"));
+
+        assertThatThrownBy(
+            () -> registroTecnicoService.listarPropiosCliente(10L, 99L)
+        ).isInstanceOf(AccessDeniedException.class);
+        verifyNoInteractions(registroTecnicoRepository);
+    }
+
     private RegistroTecnico crearRegistro(
         Long id,
         OrdenTrabajo orden,
@@ -285,11 +331,22 @@ class RegistroTecnicoServiceTest {
         String tarea,
         int hora
     ) {
+        return crearRegistro(id, orden, tecnico, tarea, hora, null);
+    }
+
+    private RegistroTecnico crearRegistro(
+        Long id,
+        OrdenTrabajo orden,
+        Usuario tecnico,
+        String tarea,
+        int hora,
+        String observacion
+    ) {
         RegistroTecnico registro = new RegistroTecnico(
             orden,
             tecnico,
             tarea,
-            null,
+            observacion,
             LocalDateTime.of(2026, 11, 6, hora, 0)
         );
 

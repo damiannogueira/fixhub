@@ -29,9 +29,21 @@ function renderBudgets(container: HTMLElement, budgets: Presupuesto[]): void {
     button.addEventListener('click', () => {
       const card = button.closest('.budget-card') as HTMLElement;
       const budget = budgets[Array.from(container.children).indexOf(card)];
-      void decidirPresupuesto(budget.id, button.dataset.decision as 'APROBADO' | 'RECHAZADO')
+      const decision = button.dataset.decision as 'APROBADO' | 'RECHAZADO';
+      if (decision === 'RECHAZADO' && !window.confirm(
+        `¿Rechazar el presupuesto #${budget.id}? La reparación de la orden #${budget.ordenId} se cancelará y esta decisión no se puede deshacer.`,
+      )) return;
+      card.querySelectorAll<HTMLButtonElement>('[data-decision]').forEach((item) => { item.disabled = true; });
+      card.querySelector('.form-alert')?.remove();
+      void decidirPresupuesto(budget.id, decision)
         .then(() => listarMisPresupuestos().then((items) => renderBudgets(container, items)))
-        .catch((error) => { button.disabled = false; window.alert(error instanceof Error ? error.message : 'No se pudo registrar la decisión.'); });
+        .catch((error) => {
+          card.querySelectorAll<HTMLButtonElement>('[data-decision]').forEach((item) => { item.disabled = false; });
+          const message = document.createElement('p');
+          message.className = 'form-alert';
+          message.textContent = error instanceof Error ? error.message : 'No se pudo registrar la decisión.';
+          card.append(message);
+        });
     });
   });
 }

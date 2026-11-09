@@ -27,10 +27,10 @@ export const LoginPage = {
     }
 
     form.appendChild(Input.render({ 
-      label: 'Usuario o Email', 
-      type: 'text', 
-      id: 'username', 
-      placeholder: 'ejemplo@fixhub.com', 
+      label: 'Email o teléfono',
+      type: 'text',
+      id: 'username',
+      placeholder: 'ejemplo@fixhub.com o 1122334455',
       required: true 
     }));
     

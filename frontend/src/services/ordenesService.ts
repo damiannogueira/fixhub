@@ -14,6 +14,33 @@ export function listarOrdenes(): Promise<OrdenTrabajo[]> {
   return apiRequest<OrdenTrabajo[]>('/ordenes');
 }
 
+/** Detalle de una orden para Administración y Recepción. */
+export function obtenerOrden(id: number): Promise<OrdenTrabajo> {
+  return apiRequest<OrdenTrabajo>(`/ordenes/${id}`);
+}
+
+export function obtenerDiagnosticoOrden(id: number): Promise<Diagnostico> {
+  return apiRequest<Diagnostico>(`/ordenes/${id}/diagnostico`);
+}
+
+export function listarRegistrosOrden(id: number): Promise<RegistroTecnico[]> {
+  return apiRequest<RegistroTecnico[]>(`/ordenes/${id}/registros-tecnicos`);
+}
+
+export function listarHistorialOrden(id: number): Promise<EventoHistorial[]> {
+  return apiRequest<EventoHistorial[]>(`/ordenes/${id}/historial`);
+}
+
+/** Reparaciones actuales y anteriores de un cliente. */
+export function listarOrdenesDeCliente(clienteId: number): Promise<OrdenTrabajo[]> {
+  return apiRequest<OrdenTrabajo[]>(`/clientes/${clienteId}/ordenes`);
+}
+
+/** Reparaciones actuales y anteriores de un equipo. */
+export function listarOrdenesDeEquipo(equipoId: number): Promise<OrdenTrabajo[]> {
+  return apiRequest<OrdenTrabajo[]>(`/equipos/${equipoId}/ordenes`);
+}
+
 export function listarMisOrdenesTecnico(): Promise<OrdenTrabajo[]> {
   return apiRequest<OrdenTrabajo[]>('/ordenes/me');
 }
@@ -24,6 +51,11 @@ export function obtenerDiagnosticoTecnico(id: number): Promise<Diagnostico> {
 
 export function obtenerDiagnosticoCliente(id: number): Promise<DiagnosticoCliente> {
   return apiRequest<DiagnosticoCliente>(`/clientes/me/ordenes/${id}/diagnostico`);
+}
+
+/** Tareas realizadas en la reparación, tal como las ve el cliente (sin observaciones internas). */
+export function listarTareasCliente(id: number): Promise<TareaCliente[]> {
+  return apiRequest<TareaCliente[]>(`/clientes/me/ordenes/${id}/registros-tecnicos`);
 }
 
 export function crearDiagnostico(id: number, request: CrearDiagnosticoRequest): Promise<Diagnostico> {
@@ -76,10 +108,11 @@ export function cambiarEstadoOrden(id: number, estado: EstadoOrden): Promise<Ord
   });
 }
 
-export function asignarTecnico(id: number, tecnicoId: number): Promise<OrdenTrabajo> {
+/** El motivo es obligatorio solo al cambiar un técnico ya asignado (y lo puede hacer únicamente el Administrador). */
+export function asignarTecnico(id: number, tecnicoId: number, motivo?: string): Promise<OrdenTrabajo> {
   return apiRequest<OrdenTrabajo>(`/ordenes/${id}/tecnico`, {
     method: 'PATCH',
-    body: JSON.stringify({ tecnicoId }),
+    body: JSON.stringify({ tecnicoId, ...(motivo ? { motivo } : {}) }),
   });
 }
 
@@ -113,6 +146,25 @@ export type RegistroTecnico = {
   usuarioNombre: string;
   tareaRealizada: string;
   observacion?: string;
+  fecha: string;
+};
+
+export type EventoHistorial = {
+  id: number;
+  tipoEvento: 'ASIGNACION_TECNICO' | 'CAMBIO_TECNICO' | 'CAMBIO_ESTADO' | 'CANCELACION';
+  estadoAnterior?: EstadoOrden;
+  estadoNuevo?: EstadoOrden;
+  comentario?: string;
+  usuarioId: number;
+  usuarioNombre: string;
+  visibleCliente: boolean;
+  fecha: string;
+};
+
+export type TareaCliente = {
+  id: number;
+  ordenId: number;
+  tareaRealizada: string;
   fecha: string;
 };
 

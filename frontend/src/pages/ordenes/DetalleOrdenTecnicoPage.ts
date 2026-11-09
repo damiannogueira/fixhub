@@ -14,6 +14,7 @@ import {
 } from '../../services/ordenesService';
 import { listarRepuestos } from '../../services/repuestosService';
 import type { OrdenTrabajo } from '../../types/orden';
+import { isHybridTechnician } from '../../utils/technicianView';
 
 export const DetalleOrdenTecnicoPage = {
   render(): HTMLElement {
@@ -22,7 +23,7 @@ export const DetalleOrdenTecnicoPage = {
     content.innerHTML = `
       <div class="page-heading">
         <div><p class="muted">Trabajo asignado</p><h2>Detalle de la orden</h2></div>
-        <a class="btn btn-secondary" href="#/ordenes">Volver a mis órdenes</a>
+        <a class="btn btn-secondary" href="#/ordenes${isHybridTechnician() ? '?vista=tecnico' : ''}">Volver a mis órdenes</a>
       </div>
       <section class="panel technical-order-detail"><div class="table-state">Cargando detalle...</div></section>
     `;
@@ -60,6 +61,8 @@ function renderDetail(
 ): void {
   // El backend solo admite crear o editar el diagnóstico en EN_DIAGNOSTICO.
   const canEditDiagnosis = order.estado === 'EN_DIAGNOSTICO';
+  // Tareas y consumos solo se registran durante la reparación (misma regla que el backend).
+  const canRegisterWork = order.estado === 'EN_REPARACION';
   panel.innerHTML = `
     <div class="technical-detail-header">
       <div><p class="muted">Orden #${order.id}</p><h3>${escapeHtml([order.equipo.tipo, order.equipo.marca, order.equipo.modelo].filter(Boolean).join(' '))}</h3><p class="muted">Cliente: ${escapeHtml(order.cliente.apellido)}, ${escapeHtml(order.cliente.nombre)}</p></div>
@@ -75,11 +78,11 @@ function renderDetail(
       <div id="diagnosis-content">${diagnosis ? `<div class="diagnosis-summary"><p><strong>Falla detectada</strong><span>${escapeHtml(diagnosis.descripcionFalla)}</span></p><p><strong>Tareas requeridas</strong><span>${escapeHtml(diagnosis.tareasRequeridas)}</span></p><small class="muted">${formatDate(diagnosis.fecha)}</small></div>` : '<p class="muted">Todavía no hay un diagnóstico registrado.</p>'}</div>
     </section>
     <section class="technical-detail-section">
-      <div class="section-heading"><h3>Registro técnico</h3><button class="btn btn-primary" type="button" id="open-task-modal">Registrar tarea</button></div>
+      <div class="section-heading"><h3>Registro técnico</h3>${canRegisterWork ? '<button class="btn btn-primary" type="button" id="open-task-modal">Registrar tarea</button>' : ''}</div>
       <div id="technical-records">${renderRecords(records)}</div>
     </section>
     <section class="technical-detail-section">
-      <div class="section-heading"><h3>Consumos de repuestos</h3><button class="btn btn-primary" type="button" id="open-consumption-modal">Registrar consumo</button></div>
+      <div class="section-heading"><h3>Consumos de repuestos</h3>${canRegisterWork ? '<button class="btn btn-primary" type="button" id="open-consumption-modal">Registrar consumo</button>' : ''}</div>
       <div id="technical-consumptions">${renderConsumptions(consumptions)}</div>
     </section>
     <div class="modal-backdrop" id="task-modal" hidden>

@@ -1,5 +1,7 @@
 import { router } from '../../router/router';
-import { clearSession } from '../../utils/authStorage';
+import { obtenerMiPerfil } from '../../services/clientesService';
+import type { Cliente } from '../../types/cliente';
+import { clearSession, getAccessToken } from '../../utils/authStorage';
 import { resetAuthState } from '../../utils/authState';
 import { getAuthState } from '../../utils/authState';
 
@@ -34,10 +36,43 @@ const clientNavItems: NavItem[] = [
   { label: 'Mis presupuestos', path: '/mis-presupuestos', icon: '$' },
 ];
 
+// El perfil del cliente se consulta una vez por sesión (se invalida si cambia el token).
+let clientProfileCache: { token: string | null; profile: Promise<Cliente> } | null = null;
+
+function loadClientProfile(): Promise<Cliente> {
+  const token = getAccessToken();
+  if (!clientProfileCache || clientProfileCache.token !== token) {
+    const profile = obtenerMiPerfil();
+    // Si falla, no se cachea el error: se reintenta en la próxima pantalla.
+    profile.catch(() => {
+      if (clientProfileCache?.profile === profile) clientProfileCache = null;
+    });
+    clientProfileCache = { token, profile };
+  }
+  return clientProfileCache.profile;
+}
+
+function showClientInTopbar(layout: HTMLElement): void {
+  const avatar = layout.querySelector('.topbar-user .avatar');
+  const name = layout.querySelector('.topbar-user strong');
+  const detail = layout.querySelector('.topbar-user small');
+  if (!avatar || !name || !detail) return;
+  loadClientProfile().then((client) => {
+    const fullName = `${client.nombre} ${client.apellido}`.trim();
+    name.textContent = fullName;
+    detail.textContent = client.email ?? client.telefono ?? 'Cliente';
+    avatar.textContent = `${client.nombre.charAt(0)}${client.apellido.charAt(0)}`.toUpperCase() || 'CL';
+    (name.parentElement as HTMLElement).title = fullName;
+  }).catch(() => {
+    // Si no se puede obtener el perfil, queda la etiqueta genérica "Cliente".
+  });
+}
+
 export function renderAppLayout(content: HTMLElement, title: string): HTMLElement {
   const layout = document.createElement('div');
   layout.className = 'app-layout';
-  const currentPath = router.getCurrentPath();
+  // Sin query string, para que "#/presupuestos?ordenId=5" marque igual la pestaña activa.
+  const currentPath = router.getCurrentPath().split('?')[0];
   const roles = getAuthState().roles;
   const isClient = roles.includes('CLIENTE')
     && !getAuthState().roles.some((role) => ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'].includes(role));
@@ -84,7 +119,7 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
       <header class="topbar">
         <button class="menu-toggle" type="button" aria-label="Abrir menú">☰</button>
         <div>
-          <p class="eyebrow">${isTechnician ? 'Panel técnico' : 'Panel de gestión'}</p>
+          <p class="eyebrow">${isClient ? 'Espacio del cliente' : isTechnician ? 'Panel técnico' : 'Panel de gestión'}</p>
           <h1 class="page-title">${title}</h1>
         </div>
         <div class="topbar-user">
@@ -96,6 +131,7 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
     </main>
   `;
 
+  if (isClient) showClientInTopbar(layout);
   layout.querySelector('.page-content')?.appendChild(content);
   layout.querySelector('.logout-button')?.addEventListener('click', () => {
     clearSession();

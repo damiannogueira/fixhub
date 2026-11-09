@@ -16,10 +16,12 @@ import { MisPresupuestosPage } from '../pages/portal-cliente/MisPresupuestosPage
 import { PresupuestosPage } from '../pages/presupuestos/PresupuestosPage';
 import { ClienteDetallePage } from '../pages/clientes/ClienteDetallePage';
 import { DetalleInventarioPage } from '../pages/inventario/DetalleInventarioPage';
+import { DetalleOrdenGestionPage } from '../pages/ordenes/DetalleOrdenGestionPage';
 import { DetalleOrdenTecnicoPage } from '../pages/ordenes/DetalleOrdenTecnicoPage';
 import type { Rol } from '../types/auth';
 import { getAccessToken } from '../utils/authStorage';
 import { hasAnyRole, hasAuthenticatedSession, requiresPasswordChange } from '../utils/authState';
+import { wantsTechnicianView } from '../utils/technicianView';
 
 type RouteHandler = () => HTMLElement;
 type Route = {
@@ -36,7 +38,10 @@ const routes: Record<string, Route> = {
   '/clientes': { render: () => ClientesPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   '/clientes/detalle': { render: () => ClienteDetallePage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA'] },
   '/ordenes': { render: () => OrdenesPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
-  '/ordenes/detalle': { render: () => DetalleOrdenTecnicoPage.render(), roles: ['TECNICO'] },
+  '/ordenes/detalle': {
+    render: () => (wantsTechnicianView() ? DetalleOrdenTecnicoPage.render() : DetalleOrdenGestionPage.render()),
+    roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'],
+  },
   '/inventario': { render: () => InventarioPage.render(), roles: ['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO'] },
   '/inventario/detalle': { render: () => DetalleInventarioPage.render(), roles: ['ADMINISTRADOR'] },
   '/usuarios': { render: () => UsuariosPage.render(), roles: ['ADMINISTRADOR'] },
