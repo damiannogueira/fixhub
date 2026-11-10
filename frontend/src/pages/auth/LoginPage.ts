@@ -5,6 +5,7 @@ import { router } from '../../router/router';
 import { login } from '../../services/authService';
 import { hasAnyRole, setAuthenticated } from '../../utils/authState';
 import { consumeAuthMessage } from '../../utils/authStorage';
+import logoUrl from '../../assets/img/Logo tecnológico FixHub con soporte central.png';
 
 export const LoginPage = {
   render(): HTMLElement {
@@ -13,7 +14,7 @@ export const LoginPage = {
 
     const cardContent = `
       <div class="login-header">
-        <img src="/src/assets/img/Logo tecnológico FixHub con soporte central.png" alt="FixHub Logo" class="login-logo" />
+        <img src="${logoUrl}" alt="FixHub Logo" class="login-logo" />
         <p class="login-subtitle">Tu Plataforma de Soporte Central</p>
       </div>
       <form id="login-form" class="login-form"></form>
