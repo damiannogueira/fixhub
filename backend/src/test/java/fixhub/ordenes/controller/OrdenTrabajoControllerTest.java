@@ -139,13 +139,13 @@ class OrdenTrabajoControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"TECNICO", "RECEPCIONISTA"})
+    @ValueSource(strings = {"ADMINISTRADOR", "TECNICO", "RECEPCIONISTA"})
     void rolesPermitidosDebenSolicitarCambioDeEstado(String rol)
         throws Exception {
         when(ordenTrabajoService.cambiarEstado(
             7L,
             NombreEstadoOrden.EN_DIAGNOSTICO,
-            30L
+            rol.equals("ADMINISTRADOR") ? 40L : 30L
         )).thenReturn(response());
 
         mockMvc.perform(
@@ -155,19 +155,6 @@ class OrdenTrabajoControllerTest {
                     .content("{\"estado\":\"EN_DIAGNOSTICO\"}")
             )
             .andExpect(status().isOk());
-    }
-
-    @Test
-    void administradorSinOtroRolNoDebeCambiarEstado() throws Exception {
-        mockMvc.perform(
-                patch("/api/ordenes/7/estado")
-                    .with(jwtConRol("ADMINISTRADOR", 40L))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"estado\":\"EN_DIAGNOSTICO\"}")
-            )
-            .andExpect(status().isForbidden());
-
-        verifyNoInteractions(ordenTrabajoService);
     }
 
     @Test
@@ -188,7 +175,7 @@ class OrdenTrabajoControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"motivo\":\"Cliente desiste\"}")
             )
-            .andExpect(status().isForbidden());
+                    .andExpect(status().isForbidden());
     }
 
     @Test

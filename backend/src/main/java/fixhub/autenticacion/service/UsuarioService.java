@@ -1,6 +1,7 @@
 package fixhub.autenticacion.service;
 
 import fixhub.autenticacion.dto.CrearUsuarioRequest;
+import fixhub.autenticacion.dto.ActualizarUsuarioRequest;
 import fixhub.autenticacion.dto.UsuarioResponse;
 import fixhub.autenticacion.entity.NombreRol;
 import fixhub.autenticacion.entity.Rol;
@@ -13,6 +14,7 @@ import fixhub.autenticacion.dto.CambiarClaveRequest;
 import fixhub.autenticacion.exception.ClaveActualIncorrectaException;
 import fixhub.autenticacion.exception.UsuarioNoEncontradoException;
 import fixhub.autenticacion.exception.UsuarioNoEsTecnicoException;
+import fixhub.clientes.repository.ClienteRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,15 +30,18 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ClienteRepository clienteRepository;
 
     public UsuarioService(
         UsuarioRepository usuarioRepository,
         RolRepository rolRepository,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        ClienteRepository clienteRepository
     ) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
+        this.clienteRepository = clienteRepository;
     }
 
     @Transactional
@@ -125,10 +130,59 @@ public class UsuarioService {
     }
 
     @Transactional(readOnly = true)
+    public List<UsuarioResponse> listarTecnicos() {
+        return usuarioRepository.findAllByOrderByIdAsc().stream()
+            .filter(usuario -> usuario.isActivo())
+            .filter(usuario -> usuario.tieneRol(NombreRol.TECNICO))
+            .map(this::convertirAResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public UsuarioResponse buscarPorId(Long id) {
         Usuario usuario = buscarUsuarioPorId(id);
 
         return convertirAResponse(usuario);
+    }
+
+    @Transactional
+    public UsuarioResponse actualizar(
+        Long id,
+        ActualizarUsuarioRequest request
+    ) {
+        Usuario usuario = buscarUsuarioPorId(id);
+        String email = normalizarEmail(request.email());
+        String telefono = normalizarContacto(request.telefono());
+        if (request.roles() == null || request.roles().isEmpty()) {
+            throw new UsuarioSinRolesException(id);
+        }
+        validarRolClienteVinculado(id, request.roles().contains(NombreRol.CLIENTE));
+        Set<Rol> roles = buscarRoles(request.roles());
+
+        validarIdentificadoresDisponiblesParaActualizacion(
+            id,
+            email,
+            telefono
+        );
+
+        usuario.setEmail(email);
+        usuario.setTelefono(telefono);
+        usuario.getRoles().clear();
+        roles.forEach(usuario::agregarRol);
+
+        if (request.claveTemporal() != null
+            && !request.claveTemporal().isBlank()) {
+            usuario.setPasswordHash(
+                passwordEncoder.encode(request.claveTemporal())
+            );
+            usuario.setRequiereCambioClave(true);
+        }
+
+        if (request.activo() != null) {
+            usuario.setActivo(request.activo());
+        }
+
+        return convertirAResponse(usuarioRepository.save(usuario));
     }
 
     @Transactional
@@ -184,6 +238,10 @@ public class UsuarioService {
             throw new UsuarioSinRolesException(usuarioId);
         }
 
+        if (nombreRol == NombreRol.CLIENTE) {
+            validarRolClienteVinculado(usuarioId, false);
+        }
+
         usuario.quitarRol(rolAsignado);
         usuarioRepository.save(usuario);
 
@@ -231,6 +289,34 @@ public class UsuarioService {
                 && usuarioRepository.existsByTelefono(telefono)
         ) {
             throw new IdentificadorUsuarioDuplicadoException(telefono);
+        }
+    }
+
+    private void validarIdentificadoresDisponiblesParaActualizacion(
+        Long usuarioId,
+        String email,
+        String telefono
+    ) {
+        if (email != null) {
+            usuarioRepository.findByEmailIgnoreCase(email)
+                .filter(usuario -> !usuario.getId().equals(usuarioId))
+                .ifPresent(usuario -> {
+                    throw new IdentificadorUsuarioDuplicadoException(email);
+                });
+        }
+
+        if (telefono != null) {
+            usuarioRepository.findByTelefono(telefono)
+                .filter(usuario -> !usuario.getId().equals(usuarioId))
+                .ifPresent(usuario -> {
+                    throw new IdentificadorUsuarioDuplicadoException(telefono);
+                });
+        }
+    }
+
+    private void validarRolClienteVinculado(Long usuarioId, boolean conservaCliente) {
+        if (!conservaCliente && clienteRepository.existsByUsuarioId(usuarioId)) {
+            throw new IllegalStateException("Una cuenta vinculada a un Cliente debe conservar el rol CLIENTE");
         }
     }
 

@@ -11,6 +11,14 @@ public interface OrdenTrabajoRepository
 
     List<OrdenTrabajo> findAllByOrderByFechaIngresoDescIdDesc();
 
+    List<OrdenTrabajo> findAllByEquipoClienteIdOrderByFechaIngresoDescIdDesc(
+        Long clienteId
+    );
+
+    List<OrdenTrabajo> findAllByEquipoIdOrderByFechaIngresoDescIdDesc(
+        Long equipoId
+    );
+
     List<OrdenTrabajo> findAllByTecnicoIdOrderByFechaIngresoDescIdDesc(
         Long tecnicoId
     );

@@ -191,6 +191,7 @@ class RegistroTecnicoControllerTest {
             100L,
             10L,
             42L,
+            "tecnico",
             "Reemplazar conector",
             "El equipo encendió",
             LocalDateTime.of(2026, 11, 6, 13, 0)

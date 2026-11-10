@@ -47,6 +47,19 @@ class UsuarioControllerTest {
     private UsuarioService usuarioService;
 
     @Test
+    void actualizarDebeRechazarRolesVaciosONulos() throws Exception {
+        for (String roles : List.of("[]", "null")) {
+            mockMvc.perform(put("/api/usuarios/42")
+                    .with(jwt().jwt(token -> token.subject("1").claim("requiereCambioClave", false))
+                        .authorities(new SimpleGrantedAuthority("ROLE_ADMINISTRADOR")))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"email\":\"cliente@fixhub.com\",\"roles\":" + roles + "}"))
+                .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(usuarioService);
+    }
+
+    @Test
     void administradorDebePoderListarUsuarios() throws Exception {
         UsuarioResponse usuario = crearUsuarioResponse();
 
@@ -118,6 +131,29 @@ class UsuarioControllerTest {
             );
 
         verify(usuarioService).buscarPorId(42L);
+    }
+
+    @Test
+    void recepcionistaDebePoderListarTecnicosActivos() throws Exception {
+        when(usuarioService.listarTecnicos())
+            .thenReturn(List.of(crearUsuarioResponse()));
+
+        mockMvc.perform(
+                get("/api/usuarios/tecnicos")
+                    .with(jwt()
+                        .jwt(token -> token
+                            .subject("2")
+                            .claim("requiereCambioClave", false)
+                        )
+                        .authorities(
+                            new SimpleGrantedAuthority("ROLE_RECEPCIONISTA")
+                        )
+                    )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].roles[0]").value("TECNICO"));
+
+        verify(usuarioService).listarTecnicos();
     }
 
     @Test

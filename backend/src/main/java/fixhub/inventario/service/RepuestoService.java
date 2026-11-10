@@ -95,6 +95,20 @@ public class RepuestoService {
         repuestoRepository.save(repuesto);
     }
 
+    public RepuestoResponse activar(Long id) {
+        Repuesto repuesto = repuestoRepository.findById(id)
+            .orElseThrow(() -> new RepuestoNoEncontradoException(id));
+        repuesto.setActivo(true);
+        return convertirAResponse(repuestoRepository.save(repuesto));
+    }
+
+    @Transactional(readOnly = true)
+    public List<RepuestoResponse> listarTodos() {
+        return repuestoRepository.findAllByOrderByActivoDescNombreAsc().stream()
+            .map(this::convertirAResponse)
+            .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<RepuestoResponse> listarConStockBajo() {
         return repuestoRepository.findRepuestosConStockBajo().stream()
