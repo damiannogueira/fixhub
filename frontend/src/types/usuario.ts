@@ -5,5 +5,7 @@ export type Usuario = {
   email?: string;
   telefono?: string;
   activo: boolean;
+  requiereCambioClave?: boolean;
+  fechaCreacion?: string;
   roles: Rol[];
 };

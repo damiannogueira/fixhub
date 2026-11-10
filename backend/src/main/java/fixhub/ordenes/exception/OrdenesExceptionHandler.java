@@ -71,6 +71,7 @@ public class OrdenesExceptionHandler {
     @ExceptionHandler({
         TecnicoRequeridoException.class,
         TransicionEstadoInvalidaException.class,
+        PresupuestoNoAprobadoException.class,
         OrdenNoCancelableException.class,
         DiagnosticoYaRegistradoException.class,
         EstadoOrdenInvalidoParaDiagnosticoException.class,

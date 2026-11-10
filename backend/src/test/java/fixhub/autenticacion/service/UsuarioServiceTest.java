@@ -1,6 +1,8 @@
 package fixhub.autenticacion.service;
 
 import fixhub.autenticacion.dto.CrearUsuarioRequest;
+import fixhub.autenticacion.dto.ActualizarUsuarioRequest;
+import fixhub.clientes.repository.ClienteRepository;
 import fixhub.autenticacion.dto.UsuarioResponse;
 import fixhub.autenticacion.entity.NombreRol;
 import fixhub.autenticacion.entity.Rol;
@@ -45,8 +47,59 @@ class UsuarioServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private ClienteRepository clienteRepository;
+
     @InjectMocks
     private UsuarioService usuarioService;
+
+    @Test
+    void actualizarNoDebeQuitarClienteDeCuentaVinculada() {
+        Usuario usuario = new Usuario("hash", "cliente@fixhub.com", null);
+        usuario.agregarRol(new Rol(NombreRol.CLIENTE));
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
+        when(clienteRepository.existsByUsuarioId(42L)).thenReturn(true);
+
+        assertThatThrownBy(() -> usuarioService.actualizar(42L,
+            new ActualizarUsuarioRequest("cliente@fixhub.com", null, null,
+                Set.of(NombreRol.TECNICO), true)))
+            .isInstanceOf(IllegalStateException.class);
+
+        assertThat(usuario.tieneRol(NombreRol.CLIENTE)).isTrue();
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void actualizarDebeAgregarRolConservandoCliente() {
+        Usuario usuario = new Usuario("hash", "cliente@fixhub.com", null);
+        usuario.agregarRol(new Rol(NombreRol.CLIENTE));
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
+        when(rolRepository.findByNombre(NombreRol.CLIENTE))
+            .thenReturn(Optional.of(new Rol(NombreRol.CLIENTE)));
+        when(rolRepository.findByNombre(NombreRol.TECNICO))
+            .thenReturn(Optional.of(new Rol(NombreRol.TECNICO)));
+        when(usuarioRepository.save(usuario)).thenReturn(usuario);
+
+        usuarioService.actualizar(42L, new ActualizarUsuarioRequest(
+            "cliente@fixhub.com", null, null, Set.of(NombreRol.CLIENTE, NombreRol.TECNICO), true));
+
+        assertThat(usuario.getRoles()).extracting(Rol::getNombre)
+            .containsExactlyInAnyOrder(NombreRol.CLIENTE, NombreRol.TECNICO);
+    }
+
+    @Test
+    void quitarRolTampocoDebeQuitarClienteVinculado() {
+        Usuario usuario = new Usuario("hash", "cliente@fixhub.com", null);
+        usuario.agregarRol(new Rol(NombreRol.CLIENTE));
+        usuario.agregarRol(new Rol(NombreRol.TECNICO));
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
+        when(clienteRepository.existsByUsuarioId(42L)).thenReturn(true);
+
+        assertThatThrownBy(() -> usuarioService.quitarRol(42L, NombreRol.CLIENTE))
+            .isInstanceOf(IllegalStateException.class);
+        assertThat(usuario.tieneRol(NombreRol.CLIENTE)).isTrue();
+        verify(usuarioRepository, never()).save(any());
+    }
 
     @Test
     void debeBuscarUsuarioConRolTecnico() {

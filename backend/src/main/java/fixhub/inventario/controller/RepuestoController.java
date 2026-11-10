@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -82,4 +83,17 @@ public class RepuestoController {
     public void desactivar(@PathVariable Long id) {
         repuestoService.desactivar(id);
     }
+
+    @PatchMapping("/{id}/activar")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public RepuestoResponse activar(@PathVariable Long id) {
+        return repuestoService.activar(id);
+    }
+
+    @GetMapping("/todos")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public List<RepuestoResponse> listarTodos() {
+        return repuestoService.listarTodos();
+    }
+
 }

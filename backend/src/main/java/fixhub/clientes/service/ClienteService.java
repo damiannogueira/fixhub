@@ -5,6 +5,8 @@ import fixhub.autenticacion.service.UsuarioService;
 import fixhub.clientes.dto.ActualizarClienteRequest;
 import fixhub.clientes.dto.ClienteResponse;
 import fixhub.clientes.dto.CrearClienteConCuentaRequest;
+import fixhub.clientes.dto.CrearClienteConRolesRequest;
+import fixhub.autenticacion.entity.NombreRol;
 import fixhub.clientes.dto.CrearClienteConUsuarioRequest;
 import fixhub.clientes.entity.Cliente;
 import fixhub.clientes.exception.ClienteNoEncontradoException;
@@ -67,6 +69,25 @@ public class ClienteService {
             request.dni(),
             request.direccion()
         );
+    }
+
+    @Transactional
+    public ClienteResponse crearConRoles(
+        CrearClienteConRolesRequest request
+    ) {
+        if (request.roles() == null || request.roles().size() != 1
+            || !request.roles().contains(NombreRol.CLIENTE)) {
+            throw new IllegalArgumentException("En el alta de Cliente solo se permite el rol CLIENTE");
+        }
+        return crearConCuenta(new CrearClienteConCuentaRequest(
+            request.email(),
+            request.telefono(),
+            request.claveTemporal(),
+            request.nombre(),
+            request.apellido(),
+            request.dni(),
+            request.direccion()
+        ));
     }
 
     @Transactional(readOnly = true)

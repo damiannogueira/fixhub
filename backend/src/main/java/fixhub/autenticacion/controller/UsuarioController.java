@@ -13,6 +13,7 @@ import fixhub.autenticacion.entity.NombreRol;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import fixhub.autenticacion.dto.CrearUsuarioRequest;
+import fixhub.autenticacion.dto.ActualizarUsuarioRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,7 +49,13 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarioService.listar());
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/tecnicos")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RECEPCIONISTA')")
+    public ResponseEntity<List<UsuarioResponse>> listarTecnicos() {
+        return ResponseEntity.ok(usuarioService.listarTecnicos());
+    }
+
+    @GetMapping("/{id:\\d+}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<UsuarioResponse> buscarPorId(
         @PathVariable Long id
@@ -56,6 +63,15 @@ public class UsuarioController {
         return ResponseEntity.ok(
             usuarioService.buscarPorId(id)
         );
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<UsuarioResponse> actualizar(
+        @PathVariable Long id,
+        @Valid @RequestBody ActualizarUsuarioRequest request
+    ) {
+        return ResponseEntity.ok(usuarioService.actualizar(id, request));
     }
 
     @PatchMapping("/{id}/desactivar")

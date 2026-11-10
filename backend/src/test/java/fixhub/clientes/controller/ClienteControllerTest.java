@@ -36,6 +36,36 @@ class ClienteControllerTest {
     private ClienteService clienteService;
 
     @ParameterizedTest
+    @ValueSource(strings = {"ADMINISTRADOR", "RECEPCIONISTA", "TECNICO", "CLIENTE\",\"ADMINISTRADOR"})
+    void recepcionistaNoDebeCrearRolesInternosEnAltaCliente(String roles) throws Exception {
+        String cuerpo = """
+            {"email":"cliente@fixhub.com","claveTemporal":"Temporal123",
+             "nombre":"Ana","apellido":"Pérez","roles":["%s"]}
+            """.formatted(roles);
+
+        mockMvc.perform(post("/api/clientes/con-roles")
+                .with(jwtConRol("RECEPCIONISTA", 42L))
+                .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(clienteService);
+    }
+
+    @Test
+    void recepcionistaDebeCrearSoloCuentaClienteEnConRoles() throws Exception {
+        when(clienteService.crearConRoles(any())).thenReturn(response());
+        mockMvc.perform(post("/api/clientes/con-roles")
+                .with(jwtConRol("RECEPCIONISTA", 42L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"email":"cliente@fixhub.com","claveTemporal":"Temporal123",
+                     "nombre":"Ana","apellido":"Pérez","roles":["CLIENTE"]}
+                    """))
+            .andExpect(status().isCreated());
+        verify(clienteService).crearConRoles(any());
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"ADMINISTRADOR", "RECEPCIONISTA"})
     void rolesAdministrativosDebenListarClientes(String rol)
         throws Exception {

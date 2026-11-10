@@ -20,6 +20,8 @@ public interface RepuestoRepository extends JpaRepository<Repuesto, Long> {
 
     List<Repuesto> findAllByActivoTrueOrderByNombreAsc();
 
+    List<Repuesto> findAllByOrderByActivoDescNombreAsc();
+
     List<Repuesto> findByNombreContainingIgnoreCaseAndActivoTrueOrderByNombreAsc(
         String nombre
     );

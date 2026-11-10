@@ -1,4 +1,5 @@
 import { router } from './router/router';
+import { resetAuthState } from './utils/authState';
 
 function initApp(): void {
   // Buscamos el contenedor principal
@@ -21,6 +22,11 @@ function initApp(): void {
 // Escuchar cambios de URL (cuando el usuario navega con el hash #)
 window.addEventListener('hashchange', () => {
   initApp();
+});
+
+window.addEventListener('fixhub:session-expired', () => {
+  resetAuthState();
+  router.navigate('/login');
 });
 
 // Arrancar la aplicación cuando carga la página
