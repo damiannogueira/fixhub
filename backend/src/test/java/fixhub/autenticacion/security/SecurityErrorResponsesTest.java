@@ -9,20 +9,27 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 
 import static org.hamcrest.Matchers.startsWith;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -43,6 +50,12 @@ class SecurityErrorResponsesTest {
 
     @Autowired
     private JwtEncoder jwtEncoder;
+
+    @Autowired
+    private ProblemAccessDeniedHandler accessDeniedHandler;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockitoBean
     private UsuarioService usuarioService;
@@ -102,10 +115,37 @@ class SecurityErrorResponsesTest {
             .andExpect(jsonPath("$.title").value("Acceso denegado"))
             .andExpect(jsonPath("$.status").value(403))
             .andExpect(jsonPath("$.detail").value(
-                "No tiene permisos para realizar esta operación"
+                "No tiene permisos para realizar esta acción"
             ));
 
         verifyNoInteractions(usuarioService);
+    }
+
+    @Test
+    void accessDeniedHandlerDebeConservarCabeceraBearerYDevolverProblem403() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        Jwt token = Jwt.withTokenValue("token-prueba")
+            .header("alg", "HS256")
+            .subject("42")
+            .build();
+        request.setUserPrincipal(new JwtAuthenticationToken(token));
+
+        accessDeniedHandler.handle(request, response,
+            new AccessDeniedException("Detalle interno de prueba"));
+
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentType()).startsWith(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        assertThat(response.getHeaders(HttpHeaders.WWW_AUTHENTICATE)).hasSize(1);
+        assertThat(response.getHeader(HttpHeaders.WWW_AUTHENTICATE))
+            .startsWith("Bearer")
+            .contains("error=\"insufficient_scope\"");
+        var problem = objectMapper.readTree(response.getContentAsString());
+        assertThat(problem.path("status").asInt()).isEqualTo(403);
+        assertThat(problem.path("title").asText()).isEqualTo("Acceso denegado");
+        assertThat(problem.path("detail").asText())
+            .isEqualTo("No tiene permisos para realizar esta operación");
+        assertThat(response.getContentAsString()).doesNotContain("Detalle interno de prueba");
     }
 
     @Test
