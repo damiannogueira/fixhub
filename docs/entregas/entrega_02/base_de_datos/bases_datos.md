@@ -45,7 +45,7 @@ erDiagram
     ESTADOS_ORDEN o|--o{ HISTORIAL_ORDENES : "estado nuevo"
 
     USUARIOS {
-        int id PK
+        bigint id PK
         varchar password_hash
         varchar email
         varchar telefono
@@ -55,18 +55,18 @@ erDiagram
     }
 
     ROLES {
-        int id PK
+        bigint id PK
         varchar nombre
     }
 
     USUARIOS_ROLES {
-        int usuario_id PK,FK
-        int rol_id PK,FK
+        bigint usuario_id PK,FK
+        bigint rol_id PK,FK
     }
 
     CLIENTES {
-        int id PK
-        int usuario_id FK
+        bigint id PK
+        bigint usuario_id FK
         varchar nombre
         varchar apellido
         varchar dni
@@ -74,8 +74,8 @@ erDiagram
     }
 
     EQUIPOS {
-        int id PK
-        int cliente_id FK
+        bigint id PK
+        bigint cliente_id FK
         varchar tipo
         varchar marca
         varchar modelo
@@ -84,16 +84,16 @@ erDiagram
     }
 
     ESTADOS_ORDEN {
-        int id PK
+        bigint id PK
         varchar nombre
         boolean es_estado_final
     }
 
     ORDENES_TRABAJO {
-        int id PK
-        int equipo_id FK
-        int tecnico_id FK
-        int estado_id FK
+        bigint id PK
+        bigint equipo_id FK
+        bigint tecnico_id FK
+        bigint estado_id FK
         text problema_inicial
         text motivo_cancelacion
         datetime fecha_ingreso
@@ -101,29 +101,29 @@ erDiagram
     }
 
     DIAGNOSTICOS {
-        int id PK
-        int orden_id FK
-        int usuario_id FK
+        bigint id PK
+        bigint orden_id FK
+        bigint usuario_id FK
         text descripcion_falla
         text tareas_requeridas
         datetime fecha
     }
 
     REGISTROS_TECNICOS {
-        int id PK
-        int orden_id FK
-        int usuario_id FK
+        bigint id PK
+        bigint orden_id FK
+        bigint usuario_id FK
         text tarea_realizada
         text observacion
         datetime fecha
     }
 
     PRESUPUESTOS {
-        int id PK
-        int orden_id FK
-        int creado_por FK
-        int publicado_por FK
-        int decidido_por FK
+        bigint id PK
+        bigint orden_id FK
+        bigint creado_por FK
+        bigint publicado_por FK
+        bigint decidido_por FK
         decimal costo_mano_obra
         decimal total
         varchar estado
@@ -133,7 +133,7 @@ erDiagram
     }
 
     REPUESTOS {
-        int id PK
+        bigint id PK
         varchar codigo
         varchar nombre
         text descripcion
@@ -141,31 +141,34 @@ erDiagram
         decimal precio_venta
         int stock_actual
         int stock_minimo
+        boolean activo
+        datetime fecha_creacion
+        datetime fecha_modificacion
     }
 
     DETALLES_PRESUPUESTO {
-        int id PK
-        int presupuesto_id FK
-        int repuesto_id FK
+        bigint id PK
+        bigint presupuesto_id FK
+        bigint repuesto_id FK
         int cantidad
         decimal precio_unitario
     }
 
     CONSUMOS_REPUESTO {
-        int id PK
-        int orden_id FK
-        int repuesto_id FK
-        int usuario_id FK
+        bigint id PK
+        bigint orden_id FK
+        bigint repuesto_id FK
+        bigint usuario_id FK
         int cantidad
         decimal precio_unitario
         datetime fecha
     }
 
     MOVIMIENTOS_STOCK {
-        int id PK
-        int repuesto_id FK
-        int usuario_id FK
-        int consumo_id FK,UK
+        bigint id PK
+        bigint repuesto_id FK
+        bigint usuario_id FK
+        bigint consumo_id FK,UK
         varchar tipo
         int cantidad
         varchar motivo
@@ -174,12 +177,12 @@ erDiagram
     }
 
     HISTORIAL_ORDENES {
-        int id PK
-        int orden_id FK
-        int usuario_id FK
+        bigint id PK
+        bigint orden_id FK
+        bigint usuario_id FK
         varchar tipo_evento
-        int estado_anterior FK
-        int estado_nuevo FK
+        bigint estado_anterior FK
+        bigint estado_nuevo FK
         text comentario
         boolean visible_cliente
         datetime fecha
@@ -195,7 +198,7 @@ Representa las cuentas de acceso al sistema. Un usuario puede tener uno o varios
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del usuario. |
+| id | BIGINT (PK) | Identificador único del usuario. |
 | password_hash | VARCHAR | Contraseña almacenada de forma segura (hash). |
 | email | VARCHAR | Correo electrónico, puede usarse como identificador de acceso. |
 | telefono | VARCHAR | Número de celular, puede usarse como identificador de acceso. |
@@ -208,7 +211,7 @@ Catálogo de roles disponibles en el sistema.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del rol. |
+| id | BIGINT (PK) | Identificador único del rol. |
 | nombre | VARCHAR | Nombre del rol (ADMINISTRADOR, RECEPCIONISTA, TECNICO, CLIENTE). |
 
 #### Tabla `usuarios_roles`
@@ -216,8 +219,8 @@ Tabla intermedia que resuelve la relación muchos a muchos entre usuarios y role
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| usuario_id | INT (PK, FK) | Referencia al usuario. |
-| rol_id | INT (PK, FK) | Referencia al rol asignado. |
+| usuario_id | BIGINT (PK, FK) | Referencia al usuario. |
+| rol_id | BIGINT (PK, FK) | Referencia al rol asignado. |
 
 ### 2.2. Módulo de Clientes y Equipos
 
@@ -226,8 +229,8 @@ Registro de las personas que llevan equipos al taller. Cada cliente tiene asocia
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del cliente. |
-| usuario_id | INT (FK, UNIQUE) | Cuenta de acceso vinculada al cliente. |
+| id | BIGINT (PK) | Identificador único del cliente. |
+| usuario_id | BIGINT (FK, UNIQUE) | Cuenta de acceso vinculada al cliente. |
 | nombre | VARCHAR | Nombre del cliente. |
 | apellido | VARCHAR | Apellido del cliente. |
 | dni | VARCHAR | Documento de identidad. |
@@ -238,8 +241,8 @@ Equipos que ingresan al taller, asociados a un cliente.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del equipo. |
-| cliente_id | INT (FK) | Cliente propietario del equipo. |
+| id | BIGINT (PK) | Identificador único del equipo. |
+| cliente_id | BIGINT (FK) | Cliente propietario del equipo. |
 | tipo | VARCHAR | Tipo de equipo (celular, notebook, electrodoméstico, etc.). |
 | marca | VARCHAR | Marca del equipo. |
 | modelo | VARCHAR | Modelo del equipo. |
@@ -253,7 +256,7 @@ Catálogo de estados posibles de una orden de trabajo.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del estado. |
+| id | BIGINT (PK) | Identificador único del estado. |
 | nombre | VARCHAR | Nombre del estado (RECIBIDA, EN_DIAGNOSTICO, PENDIENTE_APROBACION, etc.). |
 | es_estado_final | BOOLEAN | Indica si es un estado final (ENTREGADA, CANCELADA). |
 
@@ -262,10 +265,10 @@ Entidad central del sistema. Representa cada reparación registrada.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único de la orden. |
-| equipo_id | INT (FK) | Equipo sobre el que se realiza la reparación. A través del equipo se identifica al cliente propietario. |
-| tecnico_id | INT (FK) | Técnico responsable. Puede ser nulo mientras la orden esté en RECIBIDA. |
-| estado_id | INT (FK) | Estado actual de la orden. |
+| id | BIGINT (PK) | Identificador único de la orden. |
+| equipo_id | BIGINT (FK) | Equipo sobre el que se realiza la reparación. A través del equipo se identifica al cliente propietario. |
+| tecnico_id | BIGINT (FK) | Técnico responsable. Puede ser nulo mientras la orden esté en RECIBIDA. |
+| estado_id | BIGINT (FK) | Estado actual de la orden. |
 | problema_inicial | TEXT | Descripción del problema informado por el cliente al recibir el equipo. |
 | motivo_cancelacion | TEXT | Motivo registrado en caso de cancelación. |
 | fecha_ingreso | DATETIME | Fecha y hora de recepción del equipo. |
@@ -276,9 +279,9 @@ Registro del diagnóstico técnico de una orden. Cada orden tiene como máximo u
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del diagnóstico. |
-| orden_id | INT (FK, UNIQUE) | Orden asociada. |
-| usuario_id | INT (FK) | Técnico que realizó o registró el diagnóstico. |
+| id | BIGINT (PK) | Identificador único del diagnóstico. |
+| orden_id | BIGINT (FK, UNIQUE) | Orden asociada. |
+| usuario_id | BIGINT (FK) | Técnico que realizó o registró el diagnóstico. |
 | descripcion_falla | TEXT | Descripción de la falla detectada. |
 | tareas_requeridas | TEXT | Tareas necesarias para la reparación. |
 | fecha | DATETIME | Fecha del diagnóstico. |
@@ -288,9 +291,9 @@ Registro de las tareas realizadas y las observaciones técnicas durante la repar
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del registro técnico. |
-| orden_id | INT (FK) | Orden sobre la que se realizó la tarea. |
-| usuario_id | INT (FK) | Técnico que realizó el registro. |
+| id | BIGINT (PK) | Identificador único del registro técnico. |
+| orden_id | BIGINT (FK) | Orden sobre la que se realizó la tarea. |
+| usuario_id | BIGINT (FK) | Técnico que realizó el registro. |
 | tarea_realizada | TEXT | Descripción de la tarea efectivamente realizada. |
 | observacion | TEXT | Observación técnica asociada. |
 | fecha | DATETIME | Fecha y hora del registro. |
@@ -300,12 +303,12 @@ Registro de los cambios relevantes en el ciclo de vida de una orden para mantene
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del registro. |
-| orden_id | INT (FK) | Orden afectada. |
-| usuario_id | INT (FK) | Usuario que realizó el cambio. |
+| id | BIGINT (PK) | Identificador único del registro. |
+| orden_id | BIGINT (FK) | Orden afectada. |
+| usuario_id | BIGINT (FK) | Usuario que realizó el cambio. |
 | tipo_evento | VARCHAR | Tipo de evento registrado, como cambio de estado o asignación de técnico. |
-| estado_anterior | INT (FK) | Estado previo, opcional cuando el evento no es un cambio de estado. |
-| estado_nuevo | INT (FK) | Estado resultante, opcional cuando el evento no es un cambio de estado. |
+| estado_anterior | BIGINT (FK) | Estado previo, opcional cuando el evento no es un cambio de estado. |
+| estado_nuevo | BIGINT (FK) | Estado resultante, opcional cuando el evento no es un cambio de estado. |
 | comentario | TEXT | Comentario o detalle del evento. |
 | visible_cliente | BOOLEAN | Indica si el evento puede mostrarse al cliente. |
 | fecha | DATETIME | Fecha y hora del evento. |
@@ -317,11 +320,11 @@ Presupuesto asociado a una orden. Cada orden que requiera presupuesto tendrá co
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del presupuesto. |
-| orden_id | INT (FK, UNIQUE) | Orden asociada. |
-| creado_por | INT (FK) | Usuario que creó el presupuesto. |
-| publicado_por | INT (FK) | Usuario que publicó el presupuesto, opcional hasta su publicación. |
-| decidido_por | INT (FK) | Cuenta de usuario vinculada al Cliente correspondiente que tomó la decisión final, opcional hasta la decisión. |
+| id | BIGINT (PK) | Identificador único del presupuesto. |
+| orden_id | BIGINT (FK, UNIQUE) | Orden asociada. |
+| creado_por | BIGINT (FK) | Usuario que creó el presupuesto. |
+| publicado_por | BIGINT (FK) | Usuario que publicó el presupuesto, opcional hasta su publicación. |
+| decidido_por | BIGINT (FK) | Cuenta de usuario vinculada al Cliente correspondiente que tomó la decisión final, opcional hasta la decisión. |
 | costo_mano_obra | DECIMAL | Importe global de mano de obra. |
 | total | DECIMAL | Total calculado (mano de obra + repuestos). |
 | estado | VARCHAR | Estado del presupuesto (BORRADOR, PUBLICADO, APROBADO, RECHAZADO). |
@@ -334,9 +337,9 @@ Repuestos incluidos en un presupuesto. Representan una estimación y **no modifi
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del detalle. |
-| presupuesto_id | INT (FK) | Presupuesto al que pertenece. |
-| repuesto_id | INT (FK) | Repuesto presupuestado. |
+| id | BIGINT (PK) | Identificador único del detalle. |
+| presupuesto_id | BIGINT (FK) | Presupuesto al que pertenece. |
+| repuesto_id | BIGINT (FK) | Repuesto presupuestado. |
 | cantidad | INT | Cantidad estimada. |
 | precio_unitario | DECIMAL | Precio unitario al momento del presupuesto. |
 
@@ -347,7 +350,7 @@ Catálogo de repuestos. El stock se representa como un atributo de la entidad, s
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del repuesto. |
+| id | BIGINT (PK) | Identificador único del repuesto. |
 | codigo | VARCHAR | Código interno del repuesto. |
 | nombre | VARCHAR | Nombre del repuesto. |
 | descripcion | TEXT | Descripción detallada. |
@@ -355,16 +358,19 @@ Catálogo de repuestos. El stock se representa como un atributo de la entidad, s
 | precio_venta | DECIMAL | Precio de venta sugerido. |
 | stock_actual | INT | Cantidad disponible en el momento. |
 | stock_minimo | INT | Stock mínimo para alertas. |
+| activo | BOOLEAN | Indica si el repuesto está habilitado en el catálogo. |
+| fecha_creacion | DATETIME | Fecha y hora de creación del repuesto. |
+| fecha_modificacion | DATETIME | Fecha y hora de su última modificación. |
 
 #### Tabla `consumos_repuesto`
 Registro de los repuestos realmente consumidos durante una reparación. Se registra como concepto independiente del presupuesto.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del consumo. |
-| orden_id | INT (FK) | Orden en la que se consumió el repuesto. |
-| repuesto_id | INT (FK) | Repuesto consumido. |
-| usuario_id | INT (FK) | Usuario que registró el consumo real. |
+| id | BIGINT (PK) | Identificador único del consumo. |
+| orden_id | BIGINT (FK) | Orden en la que se consumió el repuesto. |
+| repuesto_id | BIGINT (FK) | Repuesto consumido. |
+| usuario_id | BIGINT (FK) | Usuario que registró el consumo real. |
 | cantidad | INT | Cantidad consumida. |
 | precio_unitario | DECIMAL | Precio unitario al momento del consumo. |
 | fecha | DATETIME | Fecha del consumo. |
@@ -374,10 +380,10 @@ Trazabilidad de todas las variaciones de stock (entradas, ajustes, consumos).
 
 | Campo | Tipo | Descripción |
 |---|---|---|
-| id | INT (PK) | Identificador único del movimiento. |
-| repuesto_id | INT (FK) | Repuesto afectado. |
-| usuario_id | INT (FK) | Usuario que registró el movimiento. |
-| consumo_id | INT (FK, UNIQUE) | Consumo real relacionado, opcional para entradas y ajustes. |
+| id | BIGINT (PK) | Identificador único del movimiento. |
+| repuesto_id | BIGINT (FK) | Repuesto afectado. |
+| usuario_id | BIGINT (FK) | Usuario que registró el movimiento. |
+| consumo_id | BIGINT (FK, UNIQUE) | Consumo real relacionado, opcional para entradas y ajustes. |
 | tipo | VARCHAR | Tipo de movimiento (ENTRADA, AJUSTE, CONSUMO). |
 | cantidad | INT | Cantidad del movimiento (positiva o negativa según el tipo). |
 | motivo | VARCHAR | Motivo o descripción del movimiento. |
@@ -459,3 +465,22 @@ El modelo respeta la organización en cinco módulos definida en la documentaci�
 - **Inventario y stock** → `repuestos`, `consumos_repuesto`, `movimientos_stock`.
 
 Cada módulo tiene sus tablas bien delimitadas y las relaciones entre ellos se mantienen mediante claves foráneas, sin duplicar responsabilidades.
+
+## 4. Correspondencia con el esquema físico MySQL
+
+La preparación del despliegue reconcilia los tipos físicos con las entidades JPA existentes, sin cambiar las relaciones ni las reglas funcionales de este diseño:
+
+- Los identificadores y sus claves foráneas utilizan `BIGINT` con signo, correspondientes a `Long` en Java. Las cantidades y existencias siguen siendo `INT`. Los scripts previos de inventario y presupuestos ya utilizaban `BIGINT`.
+- `repuestos` conserva `activo`, `fecha_creacion` y `fecha_modificacion`, implementados en la entidad para administrar su disponibilidad y sus fechas. Su ausencia anterior en el DER y diccionario era una omisión documental.
+- Los atributos `LocalDateTime` se representan mediante `DATETIME(6)`, sin conversión automática de zona horaria y con precisión de microsegundos. Esto coincide con el tipo de fecha sin zona del dialecto MySQL de Hibernate. Se reemplaza el `TIMESTAMP` de los tres campos de fecha del script de presupuestos solo para nuevas instalaciones.
+- Los largos de cadenas, nulabilidad y precisión monetaria se toman de los mapeos JPA: `VARCHAR(255)` cuando no hay un largo explícito y `DECIMAL(12,2)` para importes. Los enums se almacenan como texto en columnas `VARCHAR`, como establece este diseño; no se agrega un catálogo nuevo.
+- Se mantienen las restricciones únicas de email, teléfono, nombre de rol, nombre de estado, código de repuesto, cuenta por Cliente, diagnóstico y presupuesto por orden, y movimiento por consumo. `usuarios_roles` utiliza la clave primaria compuesta documentada.
+- Las tablas utilizan InnoDB. Las PK y restricciones únicas crean sus índices; InnoDB crea los índices necesarios de las FK si no están cubiertos por uno existente. No se agregan índices de rendimiento sin evidencia ni borrados en cascada.
+
+El esquema completo se distribuye sin duplicar tablas entre [base.sql](../../../sql/base.sql), [presupuestos.sql](../../../sql/presupuestos.sql) e [inventario.sql](../../../sql/inventario.sql), en ese orden. Los valores iniciales de roles y estados, y el administrador opcional, continúan a cargo de los inicializadores Java.
+
+El DDL no reemplaza las validaciones de negocio de los servicios: permisos, transiciones de estado, roles mínimos y la creación atómica de consumo y movimiento siguen siendo responsabilidad de la aplicación.
+
+Estos scripts son exclusivamente para una base vacía. No constituyen una migración ni modifican instalaciones existentes. Cambiar `INT` a `BIGINT` requiere revisar también las FK; convertir `TIMESTAMP` a `DATETIME` requiere revisar los valores y la zona horaria de la sesión antes de diseñar una migración separada. La collation heredada de la base influye en las comparaciones y restricciones únicas y debe revisarse con el proveedor.
+
+El esquema se ejecutó y verificó estructuralmente en MySQL 8.4.13 de Railway. También se probaron operaciones funcionales del backend mediante conexión SSH. La conexión desde Render sigue pendiente.

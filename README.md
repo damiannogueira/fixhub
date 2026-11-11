@@ -294,9 +294,10 @@ Los estados `ENTREGADA` y `CANCELADA` se consideran estados finales.
 
 ### Backend
 
-- Java
-- Spring Boot
-- Maven
+- Java 25
+- Spring Boot 4.1.1
+- Maven Wrapper (Maven 3.9.16)
+- Spring Web MVC
 - Spring Data JPA
 - Hibernate
 - Spring Security
@@ -320,15 +321,11 @@ La documentación completa se encuentra en [Diseño de la base de datos](docs/en
 
 ## Despliegue
 
-Para el despliegue se evaluarán servicios administrados compatibles con las tecnologías seleccionadas.
+- **Frontend:** publicado en [https://fixhub-five.vercel.app](https://fixhub-five.vercel.app) mediante Vercel, integrado con GitHub y con despliegues de producción desde `main`.
+- **Backend:** preparación Docker implementada para Render. La construcción y ejecución del contenedor y el despliegue en Render están pendientes.
+- **Base de datos:** MySQL 8.4.13 alojado en Railway, con el esquema y las operaciones funcionales probadas mediante conexión SSH. La conexión desde Render y su configuración TLS siguen pendientes.
 
-Alternativas consideradas:
-
-- **Frontend:** Vercel o Netlify.
-- **Backend:** Render o Railway.
-- **Base de datos:** servicio administrado compatible con MySQL.
-
-La selección definitiva se realizará considerando compatibilidad, disponibilidad y costos al momento del despliegue.
+La integración del frontend publicado con la API pública todavía está pendiente; el sistema completo no se encuentra operativo en producción.
 
 ## Alcance
 
@@ -361,72 +358,139 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-La Segunda Entrega de diseño y documentación se encuentra completada. El proyecto inició la implementación del backend y actualmente cuenta con:
+La Segunda Entrega de diseño y documentación se encuentra completada. El proyecto está en implementación y validación y cuenta con:
 
-- Base técnica de Spring Boot.
-- Autenticación, usuarios y roles.
-- Seguridad mediante JWT y cambio obligatorio de clave.
-- Gestión de clientes y equipos con acceso propio del Cliente.
-- Núcleo de órdenes de trabajo, con estados, asignación de Técnicos,
-  cancelación y acceso propio.
-- Trazabilidad mínima de las operaciones realizadas sobre las órdenes.
-- Gestión del diagnóstico único de cada orden, con acceso controlado
-  según rol y propiedad.
-- Registro cronológico de tareas y observaciones técnicas durante la
-  reparación.
-- Gestión del catálogo de repuestos con autorización por roles.
-
-- Gestión transaccional de existencias mediante entradas, ajustes y
-  consumos reales asociados a órdenes de trabajo.
-
-- Trazabilidad de las variaciones mediante movimientos de stock y
-  prevención de consumos que generen existencias negativas.
-
-Presupuestos, historial consultable completo, dashboard e integración
-funcional completa del frontend continúan pendientes.
+- Autenticación JWT, gestión de usuarios y roles, cambio obligatorio de clave y respuestas de error 401/403.
+- Gestión de clientes y equipos, creación o reutilización de cuentas Cliente y consultas de información propia.
+- Órdenes de trabajo con asignación y cambio de técnico, estados, cancelación y acceso según rol y propiedad.
+- Diagnóstico único por orden, registros técnicos y consultas de historial y reparaciones por cliente o equipo.
+- Presupuestos con creación, edición, publicación y decisión del Cliente, integrados con el flujo de la orden.
+- Catálogo de repuestos, entradas, ajustes, consumos reales y movimientos de stock.
+- Frontend con vistas de gestión, portal del Cliente y navegación según roles.
+- Dashboard básico calculado a partir de órdenes y repuestos.
 
 ## Instalación y ejecución
 
 ### Requisitos
 
-- Java 25.
-- Maven Wrapper incluido en el repositorio.
-- MySQL.
+- Java 25 y Maven Wrapper incluido en el repositorio.
+- MySQL 8.0.16 o superior, para aplicar las restricciones `CHECK` del esquema.
+- Node.js y npm para el frontend. Vite requiere Node `^20.19.0 || >=22.12.0`.
+- Docker, únicamente para construir y ejecutar el contenedor del backend.
+
+### Inicialización de MySQL
+
+El backend utiliza `spring.jpa.hibernate.ddl-auto=none`: Hibernate no crea ni actualiza las tablas. El esquema de 15 tablas está preparado en los siguientes scripts, que deben ejecutarse una sola vez y en este orden sobre una base vacía:
+
+1. [base.sql](docs/sql/base.sql): usuarios, roles, clientes, equipos, órdenes, diagnóstico, registros técnicos, historial y repuestos.
+2. [presupuestos.sql](docs/sql/presupuestos.sql): presupuestos y sus detalles.
+3. [inventario.sql](docs/sql/inventario.sql): consumos de repuestos y movimientos de stock.
+
+Crear previamente una base con codificación `utf8mb4` y revisar su collation. Los scripts utilizan InnoDB y heredan la codificación y collation de esa base; no crean usuarios ni credenciales.
+
+Desde el cliente `mysql`, conectado a la base vacía y con la raíz del repositorio como directorio de trabajo:
+
+```sql
+SOURCE docs/sql/base.sql;
+SOURCE docs/sql/presupuestos.sql;
+SOURCE docs/sql/inventario.sql;
+```
+
+En otras herramientas, ejecutar el contenido de los archivos en el mismo orden. Detenerse ante errores. Estos scripts no son migraciones y no deben ejecutarse sobre tablas existentes.
+
+Los inicializadores crean los roles y estados faltantes sobre el esquema ya preparado. El administrador inicial es opcional y requiere habilitar su bootstrap y configurar sus credenciales. Para una base nueva, mantener habilitada la inicialización de roles antes de crear el administrador.
 
 ### Variables de entorno
 
-Para ejecutar el backend se deben configurar las siguientes variables obligatorias:
+Configurar las variables del backend en el entorno del proceso:
 
-- `DB_URL`
-- `DB_USERNAME`
-- `DB_PASSWORD`
-- `JWT_SECRET`: clave Base64 válida que represente al menos 32 bytes.
+| Variable | Uso |
+| --- | --- |
+| `DB_URL` | URL JDBC de MySQL, con los parámetros TLS requeridos por el proveedor |
+| `DB_USERNAME` | Usuario de la base |
+| `DB_PASSWORD` | Contraseña de la base |
+| `JWT_SECRET` | Clave Base64 que represente al menos 32 bytes |
+| `PORT` | Opcional; puerto HTTP, predeterminado 8080 |
+| `JWT_EXPIRATION` | Opcional; duración del token, predeterminada `PT1H` |
+| `BOOTSTRAP_ROLES_ENABLED` | Opcional; predeterminado `true` |
+| `BOOTSTRAP_ADMIN_ENABLED` | Opcional; predeterminado `false` |
+| `BOOTSTRAP_ADMIN_EMAIL` | Necesario si se habilita el administrador inicial |
+| `BOOTSTRAP_ADMIN_PASSWORD` | Necesario si se habilita el administrador inicial |
 
-También se encuentran disponibles las siguientes variables opcionales:
+La propiedad `app.bootstrap.estados-orden.enabled` controla la inicialización de estados y está habilitada de forma predeterminada. Después de crear el administrador inicial, deshabilitar su bootstrap antes de retirar sus credenciales. Mantener `JWT_SECRET` estable entre reinicios.
 
-- `JWT_EXPIRATION`
-- `BOOTSTRAP_ROLES_ENABLED`
-- `BOOTSTRAP_ADMIN_ENABLED`
-- `BOOTSTRAP_ADMIN_EMAIL`
-- `BOOTSTRAP_ADMIN_PASSWORD`
+La aplicación no carga automáticamente archivos `.env`. No versionar secretos ni incluirlos en la imagen Docker.
 
-### Windows PowerShell
+### Backend
+
+Después de preparar MySQL y las variables, ejecutar desde `backend`:
+
+Windows PowerShell:
 
 ```powershell
-cd backend
 .\mvnw.cmd spring-boot:run
+```
+
+macOS y Linux:
+
+```bash
+./mvnw spring-boot:run
+```
+
+El servidor escucha en `0.0.0.0` y utiliza `PORT`, o 8080 si no se define. CORS permite el frontend publicado en Vercel y los orígenes locales `http://localhost:5173` y `http://127.0.0.1:5173`.
+
+### Frontend
+
+El frontend utiliza TypeScript y Vite, con páginas, componentes y servicios propios y navegación mediante fragmentos `#`. La autorización se aplica en el backend.
+
+Desde `frontend`:
+
+```bash
+npm ci
+npm run dev
+```
+
+La variable pública `VITE_API_BASE_URL` configura la dirección de la API, incluyendo `/api` y sin barra final. Su valor predeterminado es `http://localhost:8080/api`. No debe contener secretos. Para producción se incorpora durante el build; cambiarla requiere reconstruir el frontend.
+
+```bash
+npm run build
+npm run preview
+```
+
+El build ejecuta TypeScript y Vite y genera `frontend/dist`, directorio de salida utilizado en Vercel. No hay scripts de lint ni tests de frontend configurados.
+
+### Contenedor del backend
+
+El [Dockerfile](backend/Dockerfile) multi-stage compila con Maven Wrapper y Java 25, ejecuta `verify` y utiliza un JRE 25 con usuario sin privilegios. [.dockerignore](backend/.dockerignore) excluye artefactos locales y configuraciones sensibles.
+
+Desde la raíz del repositorio, con Docker disponible:
+
+```bash
+docker build -t fixhub-backend:local backend
+docker run --rm -p 10000:10000 -e PORT=10000 -e DB_URL -e DB_USERNAME -e DB_PASSWORD -e JWT_SECRET fixhub-backend:local
+```
+
+Las variables reenviadas deben estar configuradas en el entorno y apuntar a una base con el esquema preparado. El host MySQL debe ser accesible desde el contenedor; `localhost` dentro del contenedor no representa al equipo anfitrión.
+
+## Compilación y pruebas
+
+Desde `backend`, en Windows PowerShell:
+
+```powershell
 .\mvnw.cmd test
 .\mvnw.cmd verify
 ```
 
-### macOS y Linux
+En macOS y Linux:
 
 ```bash
-cd backend
-./mvnw spring-boot:run
 ./mvnw test
 ./mvnw verify
 ```
+
+`test` ejecuta las pruebas y `verify` también compila y empaqueta el JAR ejecutable en `backend/target/backend-0.0.1-SNAPSHOT.jar`.
+
+Las pruebas del backend abarcan seguridad, controllers, servicios, repositories y transacciones, y utilizan H2 en memoria en modo MySQL cuando requieren persistencia. No sustituyen la validación integral contra MySQL ni las pruebas de integración del sistema desplegado.
 
 ## Trabajo Final Integrador
 
