@@ -1,3 +1,4 @@
+import { LandingPage } from '../pages/landing/LandingPage';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { ChangePasswordPage } from '../pages/auth/ChangePasswordPage';
 import { NotFoundPage } from '../pages/auth/NotFoundPage';
@@ -31,6 +32,7 @@ type Route = {
 };
 
 const routes: Record<string, Route> = {
+  '/': { render: () => LandingPage.render(), public: true },
   '/login': { render: () => LoginPage.render(), public: true },
   '/404': { render: () => NotFoundPage.render(), public: true },
   '/cambiar-clave': { render: () => ChangePasswordPage.render() },
@@ -57,7 +59,7 @@ const routes: Record<string, Route> = {
 
 function getCurrentPath(): string {
   const hash = window.location.hash.replace('#', '');
-  return hash || '/login'; // Si no hay ruta, va al login por defecto
+  return hash || '/'; // Si no hay ruta, va a la página de inicio
 }
 
 function renderCurrentRoute(): HTMLElement {
@@ -68,7 +70,7 @@ function renderCurrentRoute(): HTMLElement {
     return NotFoundPage.render();
   }
 
-  if (path === '/login' && getAccessToken()) {
+  if ((path === '/' || path === '/login') && getAccessToken()) {
     navigate(requiresPasswordChange() ? '/cambiar-clave' : getHomeRoute());
     return document.createElement('div');
   }
