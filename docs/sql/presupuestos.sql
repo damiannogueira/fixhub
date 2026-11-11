@@ -7,14 +7,14 @@ CREATE TABLE presupuestos (
     costo_mano_obra DECIMAL(12, 2) NOT NULL,
     total DECIMAL(12, 2) NOT NULL,
     estado VARCHAR(30) NOT NULL,
-    fecha_creacion TIMESTAMP NOT NULL,
-    fecha_publicacion TIMESTAMP,
-    fecha_decision TIMESTAMP,
+    fecha_creacion DATETIME(6) NOT NULL,
+    fecha_publicacion DATETIME(6),
+    fecha_decision DATETIME(6),
     CONSTRAINT fk_presupuesto_orden FOREIGN KEY (orden_id) REFERENCES ordenes_trabajo(id),
     CONSTRAINT fk_presupuesto_creado FOREIGN KEY (creado_por) REFERENCES usuarios(id),
     CONSTRAINT fk_presupuesto_publicado FOREIGN KEY (publicado_por) REFERENCES usuarios(id),
     CONSTRAINT fk_presupuesto_decidido FOREIGN KEY (decidido_por) REFERENCES usuarios(id)
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE detalles_presupuesto (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -25,4 +25,4 @@ CREATE TABLE detalles_presupuesto (
     CONSTRAINT fk_detalle_presupuesto FOREIGN KEY (presupuesto_id) REFERENCES presupuestos(id),
     CONSTRAINT fk_detalle_repuesto FOREIGN KEY (repuesto_id) REFERENCES repuestos(id),
     CONSTRAINT ck_detalle_cantidad CHECK (cantidad > 0)
-);
+) ENGINE=InnoDB;
