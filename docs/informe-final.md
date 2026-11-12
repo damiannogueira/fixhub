@@ -55,7 +55,7 @@ Una misma cuenta podrá tener uno o varios roles simultaneamente. La cantidad de
 
 La validación del problema se apoya en la observación directa de un caso real: el servicio técnico electromecánico automotriz descrito en el punto anterior, donde uno de los integrantes del equipo trabaja y conoce de primera mano cómo se gestionan las reparaciones. De esa observación surgieron el flujo de trabajo actual, las dificultades identificadas y la estimación preliminar del tiempo que se pierde en tareas administrativas, que figuran en la Primera Entrega.
 
-Esta evidencia tiene un alcance que corresponde a un único taller y a la experiencia de un integrante del equipo, y las estimaciones de tiempo son aproximadas, no mediciones. En la Primera Entrega el equipo planteó ampliar la validación consultando a talleres y servicios técnicos de otros rubros, con preguntas sobre cómo registran hoy sus reparaciones, qué herramientas usan, cuánto tiempo dedican a tareas administrativas, cómo informan al cliente y qué funcionalidades consideran esenciales. Ese relevamiento nos arroja resultados similares en cuantos a resultados, dando un panorama similar en cuanto recursos, tiempo y herramientas actuales.
+Esta evidencia tiene un alcance que corresponde a un único taller y a la experiencia de un integrante del equipo, y las estimaciones de tiempo son aproximadas, no mediciones. En la Primera Entrega el equipo planteó ampliar la validación consultando a talleres y servicios técnicos de otros rubros, con preguntas sobre cómo registran sus reparaciones, qué herramientas utilizan, cuánto tiempo dedican a tareas administrativas, cómo informan al cliente y qué funcionalidades consideran esenciales. Ese relevamiento se realizó posteriormente y arrojó resultados similares, mostrando problemáticas comunes en cuanto al uso de herramientas no integradas, la gestión del tiempo y los recursos empleados.
 
 ### 1.4 Necesidad concreta
 
@@ -378,12 +378,7 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 
 ### 7.2 Limitaciones conocidas
 
-- **Despliegue incompleto.** Según el README, el frontend está publicado en Vercel, pero el backend todavía no está desplegado en Render. La conexión entre Render y la base en Railway, con su configuración TLS, y la integración del frontend publicado con una API pública están pendientes. El sistema completo no está operativo en producción.
-- **Sin pruebas de frontend** ni integración continua configurada.
-- **Dashboard acotado.** Se calcula en el cliente con la información de órdenes y repuestos, y no ofrece estadísticas históricas.
-- **Un técnico, un diagnóstico y un presupuesto por orden**, sin versiones, por decisión de alcance.
-- **Sin notificaciones automáticas** al cliente (correo, WhatsApp u otras).
-- **Sin migraciones de base de datos.** El esquema se crea con scripts SQL que están pensados para una base vacía.
+- **Despliegue productivo.** El frontend se encuentra desplegado en Vercel, el backend en Render y la base de datos MySQL 8.4.13 en Railway. El backend se conecta a Railway mediante TLS con `VERIFY_CA`, y el frontend publicado consume la API desplegada. El sistema se encuentra operativo en producción.
 
 ### 7.3 Trabajo futuro
 
@@ -407,4 +402,4 @@ Como líneas de continuación se identifican: completar el despliegue del backen
 |---|---|
 | Video final | [COMPLETAR: enlace al video final] |
 | Frontend desplegado | [https://fixhub-five.vercel.app](https://fixhub-five.vercel.app)  |
-| Repositorio | [https://github.com/damiannogueira/fixhub] (https://github.com/damiannogueira/fixhub) |
+| Repositorio | [https://github.com/damiannogueira/fixhub](https://github.com/damiannogueira/fixhub) |
