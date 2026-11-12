@@ -382,9 +382,7 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 
 ### 7.3 Trabajo futuro
 
-Como líneas de continuación se identifican: completar el despliegue del backend y su conexión con la base y el frontend; agregar pruebas del frontend y una integración continua; incorporar notificaciones al cliente; y retomar las funciones que quedaron fuera del alcance, como pagos, facturación o la integración con WhatsApp.
-
-
+Como líneas de continuación se identifican: agregar pruebas automatizadas del frontend y una integración continua, incorporar notificaciones al cliente y, fuera del alcance actual del MVP, evaluar funcionalidades como pagos, facturación o integración con WhatsApp Business.
 
 ### 7.4 Aprendizajes
 
