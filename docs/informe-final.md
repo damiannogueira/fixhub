@@ -12,7 +12,7 @@ Informe Final del Trabajo Final Integrador
 
 | | |
 |---|---|
-| **Universidad** | Universidad Tecnologica Nacional |
+| **Universidad** | Universidad Tecnológica Nacional |
 | **Carrera** | Tecnicatura Universitaria en Programación a Distancia |
 | **Materia** | Proyecto Final (Trabajo Final de la carrera) |
 | **Proyecto** | FixHub |
@@ -49,7 +49,7 @@ El sistema contempla cuatro roles, que pueden acumularse en una misma cuenta:
 - **Técnico:** trabaja sobre las órdenes que tiene asignadas: diagnostica, registra tareas, repara y declara los repuestos consumidos.
 - **Cliente:** accede a un portal propio para ver sus equipos, el estado de sus reparaciones y sus presupuestos, y para aprobarlos o rechazarlos.
 
-Una misma cuenta podrá tener uno o varios roles simultaneamente. La cantidad de actores puede variar segun el contexto en el que se emplee el sistema (Taller pequeño o grande). 
+Una misma cuenta podrá tener uno o varios roles simultáneamente. La cantidad de actores puede variar según el contexto en el que se emplee el sistema (Taller pequeño o grande). 
 
 ### 1.3 Evidencia de validación del problema
 
@@ -231,17 +231,16 @@ El backend se organiza por dominio en cinco paquetes (`autenticacion`, `clientes
 
 | Componente | Tecnología | Responsabilidad |
 |---|---|---|
-| Frontend | TypeScript, Vite, HTML y CSS | Interfaz, navegación por rol y consumo de la API |
+| Frontend | TypeScript 6, Vite 8, HTML y CSS | Interfaz, navegación por rol y consumo de la API |
 | Backend | Java 25, Spring Boot 4.1.1, Spring Web MVC | API REST y reglas de negocio |
 | Persistencia | Spring Data JPA con Hibernate | Mapeo objeto-relacional y consultas |
-| Seguridad | Spring Security con JWT (resource server) y BCrypt | Autenticación, autorización y protección de contraseñas |
+| Seguridad | Spring Security, OAuth2 Resource Server con JWT y BCrypt | Autenticación, autorización y protección de contraseñas |
 | Validación | Bean Validation | Validación de los datos de entrada |
-| Base de datos | MySQL | Almacenamiento relacional con restricciones de integridad |
-| Contenedor | Docker (build en varias etapas) | Empaquetado del backend para su despliegue |
+| Base de datos | MySQL 8.4 | Almacenamiento relacional con restricciones de integridad |
+| Contenedor | Docker | Empaquetado del backend para su despliegue |
 | Pruebas | JUnit, Spring Test y H2 en memoria | Pruebas automáticas del backend |
 | Control de versiones | Git y GitHub | Trabajo en equipo con ramas y Pull Requests |
-
-
+| Despliegue | Vercel, Render y Railway | Alojamiento del frontend, backend y base de datos |
 
 El frontend no usa un framework de interfaz: las páginas y los componentes son módulos TypeScript que construyen el DOM, y la navegación usa fragmentos de URL (`#/ruta`). Un efecto práctico de esto es que el sitio estático no necesita reglas de redirección en el servidor.
 
@@ -261,7 +260,7 @@ La concurrencia relevante está en el stock. Las entradas, los ajustes y los con
 
 ### 4.6 Despliegue y configuración
 
-El backend se configura con variables de entorno (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, y opcionales como `PORT`, `JWT_EXPIRATION` y las de creación del administrador inicial), sin valores guardados en el repositorio. El frontend toma la dirección de la API de `VITE_API_BASE_URL`. El esquema de la base de datos se crea ejecutando los tres scripts de `docs/sql/` en orden, porque Hibernate no genera las tablas. Al iniciar, el backend crea los roles y los estados de orden faltantes y, si se habilita, un administrador inicial.
+Actualmente, el frontend se encuentra desplegado en Vercel, el backend en Render y la base de datos MySQL 8.4.13 en Railway. El backend se conecta a Railway mediante TLS con `VERIFY_CA`, y el frontend publicado consume la API desplegada. El sistema se encuentra operativo en producción.
 
 ---
 
@@ -378,7 +377,11 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 
 ### 7.2 Limitaciones conocidas
 
-- **Despliegue productivo.** El frontend se encuentra desplegado en Vercel, el backend en Render y la base de datos MySQL 8.4.13 en Railway. El backend se conecta a Railway mediante TLS con `VERIFY_CA`, y el frontend publicado consume la API desplegada. El sistema se encuentra operativo en producción.
+- **Sin pruebas automatizadas de frontend** ni integración continua configurada.
+- **Dashboard acotado.** Se calcula en el cliente con la información de órdenes y repuestos, y no ofrece estadísticas históricas.
+- **Un técnico, un diagnóstico y un presupuesto por orden**, sin versiones, por decisión de alcance.
+- **Sin notificaciones automáticas** al cliente (correo, WhatsApp u otras).
+- **Sin migraciones de base de datos.** El esquema se crea con scripts SQL que están pensados para una base vacía.
 
 ### 7.3 Trabajo futuro
 
