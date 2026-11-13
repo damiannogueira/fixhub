@@ -239,6 +239,7 @@ El backend se organiza por dominio en cinco paquetes (`autenticacion`, `clientes
 | Base de datos | MySQL | Almacenamiento relacional con restricciones de integridad |
 | Contenedor | Docker (build en varias etapas) | Empaquetado del backend para su despliegue |
 | Pruebas | JUnit, Spring Test y H2 en memoria | Pruebas automáticas del backend |
+| Pruebas del frontend | Vitest y jsdom | Pruebas automáticas de la lógica del frontend |
 | Control de versiones | Git y GitHub | Trabajo en equipo con ramas y Pull Requests |
 
 
@@ -344,6 +345,29 @@ La última ejecución completa de `./mvnw test`, realizada el 12/11/2026, result
 
 *Figura 7. Salida de `./mvnw test` con el resumen de resultados.*
 
+**Pruebas del frontend.** El frontend cuenta con 85 pruebas automáticas, distribuidas en 8 archivos, escritas con Vitest y ejecutadas sobre un DOM simulado (jsdom). Se limitan a la lógica del cliente y no ejercitan el sistema completo. Cubren las siguientes áreas:
+
+| Área | Qué se verifica |
+|---|---|
+| Sesión y roles | Decodificación de roles del JWT, rechazo de tokens mal formados, guardado y borrado de la sesión, y aviso de cambio de clave obligatorio |
+| Comunicación con la API | Envío del token en cada pedido, mensajes de error según el estado HTTP, cierre de sesión ante un 401 y falla de red |
+| Servicios | URL, método HTTP y cuerpo de los pedidos a la API, y el cálculo de los indicadores del dashboard |
+| Control de acceso del router | Redirección al login sin sesión, a la pantalla de cambio de clave, y rechazo de rutas no permitidas para cada rol |
+| Pantalla de inicio de sesión | Validación del formulario, navegación según el rol y manejo de errores del login |
+| Componentes y utilidades | Componentes de interfaz, escape de texto ingresado por el usuario y formatos de fechas, estados y montos |
+
+Se ejecutan desde la carpeta `frontend`:
+
+```bash
+npm test         # ejecuta las pruebas una sola vez
+```
+
+La última ejecución resultó en **85 pruebas ejecutadas y 85 aprobadas, sin fallas**, y la verificación de tipos con `tsc --noEmit` no informó errores. Las llamadas a la API se simulan, por lo que estas pruebas no requieren el backend ni la base de datos.
+
+![Figura 8. Resultado de la ejecución de las pruebas del frontend](img/captura-tests-frontend.png)
+
+*Figura 8. Salida de `npm test` con el resumen de resultados del frontend.*
+
 ### 6.2 Cómo se comprueban las reglas críticas
 
 Las reglas más importantes del sistema tienen pruebas propias en los services y controllers correspondientes:
@@ -359,12 +383,16 @@ Las reglas más importantes del sistema tienen pruebas propias en los services y
 | Permisos por rol (401 y 403) | `SecurityErrorResponsesTest`, `*ControllerTest` |
 | Cambio obligatorio de clave | `AuthControllerTest`, `AutenticacionServiceTest` |
 | Atomicidad de las operaciones compuestas | `OrdenTrabajoTransactionTest`, `ClienteTransactionTest` |
+| Cada rol accede solo a sus pantallas (frontend) | `router.test.ts` |
+| La sesión vencida se cierra y se informa al usuario (frontend) | `api.test.ts`, `loginPage.test.ts` |
 
 
 
 ### 6.3 Limitaciones de las pruebas
 
-No existen pruebas automáticas del frontend. Las pruebas del backend no reemplazan una validación integral contra MySQL ni pruebas del sistema desplegado, porque usan H2. La validación contra MySQL se realizó de forma manual sobre el esquema y las operaciones funcionales, según lo documentado en el README.
+Las pruebas automáticas del frontend cubren la sesión, la comunicación con la API, el control de acceso del router, la pantalla de inicio de sesión y los componentes básicos, pero no el resto de las pantallas. Quedan sin pruebas automáticas las páginas de órdenes, inventario, presupuestos, clientes y usuarios, el menú de navegación y la pantalla de cambio de clave. Tampoco hay pruebas de punta a punta que recorran un flujo completo contra el backend real, ni se midió el porcentaje de cobertura del frontend.
+
+Las pruebas del backend no reemplazan una validación integral contra MySQL ni pruebas del sistema desplegado, porque usan H2. La validación contra MySQL se realizó de forma manual sobre el esquema y las operaciones funcionales, según lo documentado en el README.
 
 
 
@@ -379,7 +407,7 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 ### 7.2 Limitaciones conocidas
 
 - **Despliegue incompleto.** Según el README, el frontend está publicado en Vercel, pero el backend todavía no está desplegado en Render. La conexión entre Render y la base en Railway, con su configuración TLS, y la integración del frontend publicado con una API pública están pendientes. El sistema completo no está operativo en producción.
-- **Sin pruebas de frontend** ni integración continua configurada.
+- **Pruebas de frontend parciales y sin integración continua.** Las pruebas del frontend cubren la lógica de sesión, el router y los servicios, pero no la mayoría de las pantallas ni los flujos de punta a punta, y no hay integración continua configurada.
 - **Dashboard acotado.** Se calcula en el cliente con la información de órdenes y repuestos, y no ofrece estadísticas históricas.
 - **Un técnico, un diagnóstico y un presupuesto por orden**, sin versiones, por decisión de alcance.
 - **Sin notificaciones automáticas** al cliente (correo, WhatsApp u otras).
@@ -387,7 +415,7 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 
 ### 7.3 Trabajo futuro
 
-Como líneas de continuación se identifican: completar el despliegue del backend y su conexión con la base y el frontend; agregar pruebas del frontend y una integración continua; incorporar notificaciones al cliente; y retomar las funciones que quedaron fuera del alcance, como pagos, facturación o la integración con WhatsApp.
+Como líneas de continuación se identifican: completar el despliegue del backend y su conexión con la base y el frontend; ampliar las pruebas del frontend a las pantallas principales, sumar pruebas de punta a punta y configurar una integración continua; incorporar notificaciones al cliente; y retomar las funciones que quedaron fuera del alcance, como pagos, facturación o la integración con WhatsApp.
 
 
 
