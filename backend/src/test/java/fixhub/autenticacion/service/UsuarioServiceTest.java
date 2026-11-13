@@ -16,6 +16,9 @@ import fixhub.autenticacion.exception.ClaveActualIncorrectaException;
 import fixhub.autenticacion.exception.UsuarioNoEncontradoException;
 import fixhub.autenticacion.exception.UsuarioNoEsTecnicoException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -53,6 +56,123 @@ class UsuarioServiceTest {
     @InjectMocks
     private UsuarioService usuarioService;
 
+    static List<String> clavesNumericas() {
+        return List.of("12345678", "0".repeat(72), "１２３４５６７８");
+    }
+
+    @ParameterizedTest
+    @MethodSource("clavesNumericas")
+    void debeRechazarClavesNumericasSinModificarDatos(String clave) {
+        assertThatThrownBy(() -> usuarioService.crear(new CrearUsuarioRequest(
+            "interno@fixhub.com", null, clave, Set.of(NombreRol.TECNICO))))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> usuarioService.crearCuentaCliente(
+            "cliente@fixhub.com", null, clave))
+            .isInstanceOf(IllegalArgumentException.class);
+
+        Usuario usuario = new Usuario("hash-anterior", "original@fixhub.com", null);
+        Rol rol = new Rol(NombreRol.TECNICO);
+        usuario.agregarRol(rol);
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
+        when(rolRepository.findByNombre(NombreRol.TECNICO)).thenReturn(Optional.of(rol));
+        assertThatThrownBy(() -> usuarioService.actualizar(42L, new ActualizarUsuarioRequest(
+            "cambiado@fixhub.com", null, clave, Set.of(NombreRol.TECNICO), false)))
+            .isInstanceOf(IllegalArgumentException.class);
+
+        when(passwordEncoder.matches("Temporal123", "hash-anterior")).thenReturn(true);
+        assertThatThrownBy(() -> usuarioService.cambiarClave(42L,
+            new CambiarClaveRequest("Temporal123", clave, clave)))
+            .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(usuario.getPasswordHash()).isEqualTo("hash-anterior");
+        assertThat(usuario.isRequiereCambioClave()).isTrue();
+        assertThat(usuario.getEmail()).isEqualTo("original@fixhub.com");
+        assertThat(usuario.isActivo()).isTrue();
+        assertThat(usuario.getRoles()).containsExactly(rol);
+        verify(passwordEncoder, never()).encode(any());
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void noDebeAceptarLaMismaClaveNiDesactivarElCambioObligatorio() {
+        Usuario usuario = new Usuario("hash-anterior", "cliente@fixhub.com", null);
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
+        when(passwordEncoder.matches("Temporal123", "hash-anterior")).thenReturn(true);
+
+        assertThatThrownBy(() -> usuarioService.cambiarClave(42L,
+            new CambiarClaveRequest("Temporal123", "Temporal123", "Temporal123")))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("La nueva contraseña debe ser diferente de la actual");
+
+        assertThat(usuario.getPasswordHash()).isEqualTo("hash-anterior");
+        assertThat(usuario.isRequiereCambioClave()).isTrue();
+        verify(passwordEncoder, never()).encode(any());
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    static List<Set<NombreRol>> combinacionesInternas() {
+        return List.of(
+            Set.of(NombreRol.ADMINISTRADOR, NombreRol.RECEPCIONISTA),
+            Set.of(NombreRol.ADMINISTRADOR, NombreRol.TECNICO),
+            Set.of(NombreRol.RECEPCIONISTA, NombreRol.TECNICO),
+            Set.of(NombreRol.ADMINISTRADOR, NombreRol.RECEPCIONISTA, NombreRol.TECNICO)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("combinacionesInternas")
+    void debeCrearYActualizarConRolesInternosAcumulados(Set<NombreRol> roles) {
+        roles.forEach(rol -> when(rolRepository.findByNombre(rol))
+            .thenReturn(Optional.of(new Rol(rol))));
+        when(passwordEncoder.encode("Temporal123")).thenReturn("hash");
+        when(usuarioRepository.save(any(Usuario.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(usuarioService.crear(new CrearUsuarioRequest(
+            "interno@fixhub.com", null, "Temporal123", roles)).roles())
+            .containsExactlyInAnyOrderElementsOf(roles);
+
+        Usuario usuario = new Usuario("hash", "interno@fixhub.com", null);
+        usuario.agregarRol(new Rol(NombreRol.TECNICO));
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
+        assertThat(usuarioService.actualizar(42L, new ActualizarUsuarioRequest(
+            "interno@fixhub.com", null, null, roles, true)).roles())
+            .containsExactlyInAnyOrderElementsOf(roles);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = NombreRol.class, names = "CLIENTE", mode = EnumSource.Mode.EXCLUDE)
+    void debeRechazarClienteConCadaRolInternoSinModificarDatos(NombreRol interno) {
+        Set<NombreRol> incompatibles = Set.of(NombreRol.CLIENTE, interno);
+        assertThatThrownBy(() -> usuarioService.crear(new CrearUsuarioRequest(
+            "cliente@fixhub.com", null, "Temporal123", incompatibles)))
+            .isInstanceOf(IllegalArgumentException.class);
+
+        Usuario cliente = new Usuario("hash", "cliente@fixhub.com", null);
+        cliente.agregarRol(new Rol(NombreRol.CLIENTE));
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(cliente));
+        assertThatThrownBy(() -> usuarioService.actualizar(42L, new ActualizarUsuarioRequest(
+            "cambiado@fixhub.com", null, "OtraClave123", incompatibles, false)))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> usuarioService.asignarRol(42L, interno))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThat(cliente.getEmail()).isEqualTo("cliente@fixhub.com");
+        assertThat(cliente.getPasswordHash()).isEqualTo("hash");
+        assertThat(cliente.isActivo()).isTrue();
+        assertThat(cliente.getRoles()).extracting(Rol::getNombre).containsExactly(NombreRol.CLIENTE);
+
+        Usuario usuarioInterno = new Usuario("hash", "interno@fixhub.com", null);
+        usuarioInterno.agregarRol(new Rol(interno));
+        when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuarioInterno));
+        assertThatThrownBy(() -> usuarioService.asignarRol(42L, NombreRol.CLIENTE))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> usuarioService.asegurarRolCliente(usuarioInterno))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThat(usuarioInterno.getRoles()).extracting(Rol::getNombre).containsExactly(interno);
+        verify(usuarioRepository, never()).save(any());
+        verify(passwordEncoder, never()).encode(any());
+    }
+
     @Test
     void actualizarNoDebeQuitarClienteDeCuentaVinculada() {
         Usuario usuario = new Usuario("hash", "cliente@fixhub.com", null);
@@ -70,21 +190,18 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void actualizarDebeAgregarRolConservandoCliente() {
+    void actualizarDebeRechazarRolInternoConCliente() {
         Usuario usuario = new Usuario("hash", "cliente@fixhub.com", null);
         usuario.agregarRol(new Rol(NombreRol.CLIENTE));
         when(usuarioRepository.findById(42L)).thenReturn(Optional.of(usuario));
-        when(rolRepository.findByNombre(NombreRol.CLIENTE))
-            .thenReturn(Optional.of(new Rol(NombreRol.CLIENTE)));
-        when(rolRepository.findByNombre(NombreRol.TECNICO))
-            .thenReturn(Optional.of(new Rol(NombreRol.TECNICO)));
-        when(usuarioRepository.save(usuario)).thenReturn(usuario);
-
-        usuarioService.actualizar(42L, new ActualizarUsuarioRequest(
-            "cliente@fixhub.com", null, null, Set.of(NombreRol.CLIENTE, NombreRol.TECNICO), true));
+        assertThatThrownBy(() -> usuarioService.actualizar(42L, new ActualizarUsuarioRequest(
+            "otro@fixhub.com", null, null, Set.of(NombreRol.CLIENTE, NombreRol.TECNICO), true)))
+            .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(usuario.getRoles()).extracting(Rol::getNombre)
-            .containsExactlyInAnyOrder(NombreRol.CLIENTE, NombreRol.TECNICO);
+            .containsExactly(NombreRol.CLIENTE);
+        assertThat(usuario.getEmail()).isEqualTo("cliente@fixhub.com");
+        verify(usuarioRepository, never()).save(any());
     }
 
     @Test
@@ -150,22 +267,16 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void debeAgregarClienteConservandoOtrosRoles() {
+    void debeRechazarClienteEnCuentaInterna() {
         Usuario usuario = new Usuario("hash", "admin@fixhub.com", null);
         usuario.agregarRol(new Rol(NombreRol.ADMINISTRADOR));
-        when(rolRepository.findByNombre(NombreRol.CLIENTE))
-            .thenReturn(Optional.of(new Rol(NombreRol.CLIENTE)));
-        when(usuarioRepository.save(usuario)).thenReturn(usuario);
-
-        usuarioService.asegurarRolCliente(usuario);
+        assertThatThrownBy(() -> usuarioService.asegurarRolCliente(usuario))
+            .isInstanceOf(IllegalArgumentException.class);
 
         assertThat(usuario.getRoles())
             .extracting(Rol::getNombre)
-            .containsExactlyInAnyOrder(
-                NombreRol.ADMINISTRADOR,
-                NombreRol.CLIENTE
-            );
-        verify(usuarioRepository).save(usuario);
+            .containsExactly(NombreRol.ADMINISTRADOR);
+        verify(usuarioRepository, never()).save(any());
     }
 
     @Test
@@ -575,7 +686,7 @@ class UsuarioServiceTest {
         );
 
         usuario.agregarRol(
-            new Rol(NombreRol.CLIENTE)
+            new Rol(NombreRol.RECEPCIONISTA)
         );
 
         Rol rolTecnico = new Rol(NombreRol.TECNICO);
@@ -594,7 +705,7 @@ class UsuarioServiceTest {
 
         assertThat(resultado.roles())
             .containsExactlyInAnyOrder(
-                NombreRol.CLIENTE,
+                NombreRol.RECEPCIONISTA,
                 NombreRol.TECNICO
             );
 
@@ -641,7 +752,7 @@ class UsuarioServiceTest {
         );
 
         usuario.agregarRol(
-            new Rol(NombreRol.CLIENTE)
+            new Rol(NombreRol.RECEPCIONISTA)
         );
 
         usuario.agregarRol(
@@ -658,7 +769,7 @@ class UsuarioServiceTest {
             );
 
         assertThat(resultado.roles())
-            .containsExactly(NombreRol.CLIENTE);
+            .containsExactly(NombreRol.RECEPCIONISTA);
 
         verify(usuarioRepository).save(usuario);
     }

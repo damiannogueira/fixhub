@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "fixhub-backend-collection",
     "name": "FixHub Backend",
-    "description": "Colección de endpoints disponibles del backend de FixHub. Requiere importar también FixHub.postman_environment.json y ejecutar Login para guardar el JWT.",
+    "description": "Importar y seleccionar FixHub.postman_environment.json. Configurar baseUrl sin /api, identificador y clave privados; Login guarda token y usuarioAutenticadoId en el entorno. usuarioId es el usuario objetivo, no la identidad autenticada. Completar IDs de datos ficticios y cambiar de sesión según el rol. CLIENTE es exclusivo; los roles internos se acumulan. Las operaciones de escritura alteran datos y no deben ejecutarse mediante Runner sobre producción. Esta colección no acredita solicitudes ejecutadas ni cuentas disponibles.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -26,20 +26,10 @@
       }
     ]
   },
-  "variable": [
-    { "key": "baseUrl", "value": "http://localhost:8080" },
-    { "key": "token", "value": "" },
-    { "key": "usuarioId", "value": "1" },
-    { "key": "clienteId", "value": "1" },
-    { "key": "equipoId", "value": "1" },
-    { "key": "ordenId", "value": "1" },
-    { "key": "tecnicoId", "value": "1" },
-    { "key": "repuestoId", "value": "1" }
-    ,{ "key": "adminPassword", "value": "" }
-  ],
   "item": [
     {
       "name": "Autenticación",
+      "description": "Login usa una cuenta autorizada del entorno de pruebas. Cambiar clave modifica su contraseña; después actualizar clave en el entorno y repetir Login para renovar el JWT.",
       "item": [
         {
           "name": "Login",
@@ -51,8 +41,11 @@
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "  const body = pm.response.json();",
-                  "  pm.collectionVariables.set('token', body.token);",
-                  "  pm.collectionVariables.set('usuarioId', body.usuarioId);",
+                  "  pm.environment.set('token', body.token);",
+                  "  pm.environment.set('usuarioAutenticadoId', body.usuarioId);",
+                  "} else {",
+                  "  pm.environment.set('token', '');",
+                  "  pm.environment.set('usuarioAutenticadoId', '');",
                   "}"
                 ]
               }
@@ -64,7 +57,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"identificador\": \"admin@fixhub.local\",\n  \"clave\": \"{{adminPassword}}\"\n}",
+              "raw": "{\n  \"identificador\": \"{{identificador}}\",\n  \"clave\": \"{{clave}}\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/api/auth/login"
@@ -77,7 +70,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"claveActual\": \"clave-actual\",\n  \"claveNueva\": \"clave-nueva-segura\",\n  \"confirmacionClave\": \"clave-nueva-segura\"\n}",
+              "raw": "{\n  \"claveActual\": \"{{clave}}\",\n  \"claveNueva\": \"{{claveNueva}}\",\n  \"confirmacionClave\": \"{{claveNueva}}\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": "{{baseUrl}}/api/auth/cambiar-clave"
@@ -87,6 +80,7 @@
     },
     {
       "name": "Usuarios",
+      "description": "Solo ADMINISTRADOR, excepto el listado de técnicos habilitado también a RECEPCIONISTA. usuarioId señala la cuenta objetivo. Editar, desactivar, activar o cambiar roles modifica esa cuenta: no usar el ID del evaluador por defecto. No quitar el último rol ni CLIENTE de una cuenta vinculada. CLIENTE no admite roles internos.",
       "item": [
         {
           "name": "Crear usuario",
@@ -124,12 +118,43 @@
         {
           "name": "Quitar rol",
           "request": { "method": "DELETE", "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}/roles/TECNICO" }
+        },
+        {
+          "name": "Actualizar usuario con roles internos",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"tecnico@fixhub.local\",\n  \"roles\": [\"RECEPCIONISTA\", \"TECNICO\"],\n  \"activo\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/usuarios/{{usuarioId}}"
+          }
+        },
+        {
+          "name": "Listar técnicos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/usuarios/tecnicos" }
         }
       ]
     },
     {
       "name": "Clientes",
+      "description": "ADMINISTRADOR o RECEPCIONISTA para gestión; /me requiere CLIENTE y limita los datos al titular. Las altas y ediciones modifican datos. La reutilización exige una cuenta CLIENTE exclusiva y no vinculada a otro Cliente.",
       "item": [
+        {
+          "name": "Crear cliente imponiendo rol CLIENTE",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"cliente-roles@fixhub.local\",\n  \"claveTemporal\": \"Ejemplo-Temporal1!\",\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Prueba\",\n  \"roles\": [\"CLIENTE\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/clientes/con-roles"
+          }
+        },
         {
           "name": "Crear cliente con cuenta",
           "request": {
@@ -185,6 +210,7 @@
     },
     {
       "name": "Equipos",
+      "description": "ADMINISTRADOR o RECEPCIONISTA para gestión; las consultas /me requieren CLIENTE y solo muestran sus equipos. Crear y actualizar modifican datos del equipo indicado.",
       "item": [
         {
           "name": "Crear equipo",
@@ -232,6 +258,7 @@
     },
     {
       "name": "Órdenes de trabajo",
+      "description": "ADMINISTRADOR o RECEPCIONISTA gestionan recepción y asignación; TECNICO consulta /ordenes/me y realiza transiciones técnicas solo en órdenes asignadas. CLIENTE consulta /clientes/me/ordenes. Crear, reasignar, cambiar estado y cancelar modifican datos. Solo ADMINISTRADOR usa la cancelación explícita, con motivo y antes de reparación. El motivo de reasignación es opcional. No ejecutar estos cambios en producción sin autorización.",
       "item": [
         {
           "name": "Crear orden",
@@ -308,11 +335,24 @@
         {
           "name": "Buscar orden propia",
           "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/ordenes/{{ordenId}}" }
+        },
+        {
+          "name": "Consultar historial de orden",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/historial" }
+        },
+        {
+          "name": "Listar reparaciones de cliente",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/{{clienteId}}/ordenes" }
+        },
+        {
+          "name": "Listar reparaciones de equipo",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/equipos/{{equipoId}}/ordenes" }
         }
       ]
     },
     {
       "name": "Diagnóstico y registros técnicos",
+      "description": "TECNICO crea o edita el diagnóstico en EN_DIAGNOSTICO y registra tareas en EN_REPARACION, siempre sobre sus órdenes asignadas. ADMINISTRADOR o RECEPCIONISTA consultan por /ordenes/{id}; TECNICO por /ordenes/me/{id}; CLIENTE por /clientes/me/ordenes/{id}. Las escrituras modifican el diagnóstico o agregan registros.",
       "item": [
         {
           "name": "Crear diagnóstico",
@@ -372,11 +412,16 @@
         {
           "name": "Listar registros de orden asignada",
           "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/me/{{ordenId}}/registros-tecnicos" }
+        },
+        {
+          "name": "Listar registros propios visibles al cliente",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/ordenes/{{ordenId}}/registros-tecnicos" }
         }
       ]
     },
     {
       "name": "Inventario",
+      "description": "El catálogo activo se consulta con ADMINISTRADOR, RECEPCIONISTA o TECNICO. Solo ADMINISTRADOR crea, edita, activa o desactiva repuestos y consulta el listado completo. DELETE desactiva el repuesto y tiene efectos persistentes; no ejecutarlo sobre datos productivos.",
       "item": [
         {
           "name": "Crear repuesto",
@@ -423,6 +468,149 @@
         {
           "name": "Desactivar repuesto",
           "request": { "method": "DELETE", "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}" }
+        },
+        {
+          "name": "Activar repuesto",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}/activar" }
+        },
+        {
+          "name": "Listar repuestos activos e inactivos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repuestos/todos" }
+        }
+      ]
+    },
+    {
+      "name": "Presupuestos",
+      "description": "ADMINISTRADOR o RECEPCIONISTA gestionan y publican; TECNICO crea, edita o consulta solo en órdenes asignadas. Crear exige orden EN_DIAGNOSTICO. BORRADOR se edita en EN_DIAGNOSTICO; PUBLICADO se edita mientras la orden sigue PENDIENTE_APROBACION, sin republicar. CLIENTE exclusivo consulta los suyos y toma la decisión final. Publicar y decidir cambian también la orden. Aprobar y rechazar son alternativas irreversibles dentro del MVP; no ejecutar ambas sobre el mismo presupuesto. Presupuestar no modifica stock.",
+      "item": [
+        {
+          "name": "Crear presupuesto borrador",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"costoManoObra\": 15000.00,\n  \"detalles\": [{\"repuestoId\": {{repuestoId}}, \"cantidad\": 1}]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/presupuesto"
+          }
+        },
+        {
+          "name": "Buscar presupuesto por orden",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/presupuesto" }
+        },
+        {
+          "name": "Listar presupuestos de gestión",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/presupuestos" }
+        },
+        {
+          "name": "Listar presupuestos del técnico asignado",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/presupuestos/me" }
+        },
+        {
+          "name": "Editar presupuesto pendiente",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"costoManoObra\": 18000.00,\n  \"detalles\": [{\"repuestoId\": {{repuestoId}}, \"cantidad\": 2}]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/presupuestos/{{presupuestoId}}"
+          }
+        },
+        {
+          "name": "Publicar presupuesto",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/presupuestos/{{presupuestoId}}/publicar" }
+        },
+        {
+          "name": "Listar presupuestos propios del cliente",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes/me/presupuestos" }
+        },
+        {
+          "name": "Aprobar presupuesto propio",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APROBADO\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/presupuestos/{{presupuestoId}}/decision"
+          }
+        },
+        {
+          "name": "Rechazar presupuesto propio",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"RECHAZADO\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/presupuestos/{{presupuestoId}}/decision"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stock y consumos",
+      "description": "ADMINISTRADOR registra entradas y ajustes y consulta movimientos. TECNICO registra consumos solo en órdenes asignadas en EN_REPARACION; ADMINISTRADOR o RECEPCIONISTA consultan consumos y TECNICO solo los de sus órdenes. Cada consumo descuenta stock y genera un movimiento. Entradas, ajustes y consumos son escrituras persistentes: usar datos ficticios en una base aislada. Un ajuste reemplaza el stock por nuevoStock y no debe enviarse como si fuera una cantidad a sumar.",
+      "item": [
+        {
+          "name": "Registrar entrada de stock",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cantidad\": 5,\n  \"motivo\": \"Entrada ficticia de evaluación\",\n  \"referencia\": \"PRUEBA-ENTRADA\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}/stock/entradas"
+          }
+        },
+        {
+          "name": "Ajustar stock absoluto",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nuevoStock\": 8,\n  \"motivo\": \"Recuento ficticio de evaluación\",\n  \"referencia\": \"PRUEBA-AJUSTE\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}/stock"
+          }
+        },
+        {
+          "name": "Listar movimientos de stock",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/inventario/movimientos" }
+        },
+        {
+          "name": "Listar movimientos de un repuesto",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/repuestos/{{repuestoId}}/movimientos" }
+        },
+        {
+          "name": "Registrar consumo real",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"repuestoId\": {{repuestoId}},\n  \"cantidad\": 1\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/consumos"
+          }
+        },
+        {
+          "name": "Listar consumos de orden",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/ordenes/{{ordenId}}/consumos" }
         }
       ]
     }

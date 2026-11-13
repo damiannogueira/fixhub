@@ -4,6 +4,8 @@
 
 Este documento presenta los módulos funcionales definidos para FixHub como parte de la Segunda Entrega del Trabajo Final Integrador.
 
+Actualización posterior del equipo: la política de roles se revisó después de la Segunda Entrega, que originalmente permitía combinar Cliente con roles internos. Las reglas siguientes reflejan Cliente exclusivo y acumulación de roles internos; el cambio se registra en el [historial del TFI](../historial.md).
+
 La organización de los módulos se realizó a partir del alcance y del MVP aprobados en la Primera Entrega, buscando separar las responsabilidades principales del sistema y evitar duplicaciones entre funcionalidades.
 
 Se definieron cinco módulos funcionales principales. Algunas funcionalidades, como diagnóstico, historial y trazabilidad, seguimiento del cliente y dashboard, se integran dentro de los módulos correspondientes o funcionan de manera transversal.
@@ -51,12 +53,12 @@ Las siguientes funcionalidades forman parte del MVP, pero no se consideran módu
 - Los demás módulos dependen de este módulo para identificar al usuario autenticado y determinar las acciones que tiene permitidas.
 
 **Reglas relevantes:**
-- Una cuenta podrá tener uno o varios roles simultáneamente.
-- Cuando un usuario tenga varios roles, sus permisos se acumularán según los roles asignados.
+- Una cuenta podrá combinar libremente los roles internos Administrador, Recepcionista y Técnico.
+- Los permisos de los roles internos se acumularán. Cliente será exclusivo y no podrá combinarse con ningún rol interno.
 - La administración general de usuarios y la asignación de roles Administrador, Recepcionista y Técnico estarán reservadas al Administrador.
 - Durante el registro de un cliente sin cuenta, el Recepcionista deberá crearle una cuenta de acceso únicamente con rol Cliente.
 - Si el cliente ya posee una cuenta de acceso, se reutilizará la existente para futuras órdenes y equipos.
-- La cuenta con rol Cliente deberá quedar vinculada exclusivamente a un único registro de Cliente para limitar el acceso a su propia información, equipos, órdenes y presupuestos. Podrá tener otros roles, pero no representar a otro Cliente.
+- La cuenta con rol Cliente deberá quedar vinculada exclusivamente a un único registro de Cliente para limitar el acceso a su propia información, equipos, órdenes y presupuestos. No podrá tener roles internos ni representar a otro Cliente.
 - El cliente deberá proporcionar al menos un medio de contacto válido: correo electrónico o número de celular.
 - El correo electrónico o el número de celular registrado podrán utilizarse como identificador de acceso.
 - Para el primer ingreso se utilizará una credencial temporal que deberá ser reemplazada por una contraseña definida por el cliente.
