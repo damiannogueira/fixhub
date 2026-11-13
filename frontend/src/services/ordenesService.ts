@@ -108,7 +108,7 @@ export function cambiarEstadoOrden(id: number, estado: EstadoOrden): Promise<Ord
   });
 }
 
-/** El motivo es obligatorio solo al cambiar un técnico ya asignado (y lo puede hacer únicamente el Administrador). */
+/** El motivo es opcional al cambiar un técnico ya asignado; la autorización se valida en el backend. */
 export function asignarTecnico(id: number, tecnicoId: number, motivo?: string): Promise<OrdenTrabajo> {
   return apiRequest<OrdenTrabajo>(`/ordenes/${id}/tecnico`, {
     method: 'PATCH',

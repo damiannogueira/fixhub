@@ -8,7 +8,7 @@ FixHub es una aplicación web orientada a talleres y servicios técnicos pequeñ
 
 La propuesta surge a partir de una problemática real observada en un servicio técnico, donde diferentes procesos de gestión se realizan mediante herramientas y canales no integrados, como planillas de cálculo, WhatsApp, llamadas telefónicas y registros manuales.
 
-A partir de esta situación, el equipo identificó una problemática que puede presentarse también en otros tipos de servicios técnicos, como reparación de celulares, electrónica, computación, electrodomésticos y otros rubros.
+A partir de esta situación, el equipo realizó relevamientos adicionales en otros talleres, que arrojaron resultados similares. Esto permitió reconocer una problemática común a distintos servicios técnicos, como reparación de celulares, electrónica, computación, electrodomésticos y otros rubros.
 
 ## Objetivo
 
@@ -52,18 +52,21 @@ Las siguientes reglas definen el comportamiento esperado del sistema dentro del 
 
 ### Usuarios, roles y acceso de clientes
 
-- Una cuenta de usuario podrá tener uno o varios roles simultáneamente. Cuando posea más de un rol, acumulará los permisos correspondientes a cada uno.
+Las decisiones del proyecto se registran en el [historial del TFI](docs/entregas/historial.md).
+
+- Los roles internos Administrador, Recepcionista y Técnico podrán combinarse libremente en una cuenta y sus permisos se acumularán.
 - Cada Cliente deberá tener asociada una única cuenta de acceso.
 - Si durante el registro de un cliente todavía no existe una cuenta asociada, el Recepcionista deberá crear una cuenta únicamente con rol Cliente.
 - Si el cliente ya posee una cuenta de acceso, deberá reutilizarse para sus futuros equipos y órdenes de trabajo.
 - La cuenta con rol Cliente quedará vinculada exclusivamente a un único registro de Cliente para determinar qué información, equipos, órdenes y presupuestos puede consultar.
-- Una cuenta podrá poseer otros roles además de Cliente cuando corresponda, pero no podrá representar a más de un Cliente.
+- Cliente será un rol exclusivo: no podrá combinarse con roles internos. Su cuenta no podrá representar a más de un Cliente.
 - El cliente deberá disponer de al menos un medio de contacto válido: correo electrónico o número de celular.
 - El correo electrónico o el número de celular podrán utilizarse como identificador de acceso.
 - El primer ingreso se realizará mediante una credencial temporal que deberá ser reemplazada por una contraseña definida por el cliente.
 - El número de orden de trabajo no podrá utilizarse como contraseña.
+- Las contraseñas deberán tener entre 8 y 72 caracteres y no podrán estar compuestas exclusivamente por dígitos. Al cambiar la contraseña, la nueva deberá ser diferente de la actual.
 - No se permitirá el registro público y autónomo de usuarios dentro del MVP.
-- El Recepcionista no podrá crear usuarios con roles Administrador, Recepcionista o Técnico ni administrar roles.
+- El rol Recepcionista, por sí solo, no habilita la creación de usuarios con roles internos ni la administración de roles; estas acciones requieren el rol Administrador.
 - La integración automática con WhatsApp Business continuará fuera del alcance del MVP.
 
 ### Clientes, equipos y órdenes de trabajo
@@ -100,7 +103,7 @@ Las siguientes reglas definen el comportamiento esperado del sistema dentro del 
 - El registro de consumos reales corresponderá al rol Técnico sobre sus órdenes asignadas.
 - Un usuario con rol Administrador solamente podrá registrar consumos si también posee el rol Técnico y tiene asignada la orden correspondiente.
 - El Administrador podrá registrar repuestos, entradas y ajustes de stock.
-- El Recepcionista podrá consultar la disponibilidad de repuestos, pero no modificar las existencias.
+- El rol Recepcionista, por sí solo, permite consultar la disponibilidad de repuestos, pero no modificar las existencias. Las entradas y ajustes requieren Administrador; los consumos requieren Técnico y una orden asignada.
 - Incluir un repuesto en un presupuesto no se considerará un consumo y no modificará el stock real.
 
 ## Módulos funcionales
@@ -121,7 +124,9 @@ La definición detallada de responsabilidades, dependencias, reglas y permisos s
 
 FixHub contempla cuatro roles principales dentro del MVP: Administrador, Recepcionista, Técnico y Cliente.
 
-Una misma cuenta podrá tener uno o varios roles simultáneamente. Cuando una cuenta posea más de un rol, acumulará los permisos correspondientes a cada uno.
+Una cuenta podrá combinar los roles internos Administrador, Recepcionista y Técnico, acumulando sus permisos. Cliente será exclusivo y no podrá combinarse con esos roles.
+
+Las atribuciones y restricciones siguientes corresponden a cada rol interno por separado. Una cuenta multirrol acumula las acciones habilitadas por sus roles, sin omitir las condiciones de estado, propiedad de los datos o asignación de la orden.
 
 ### Administrador
 
@@ -155,7 +160,7 @@ El Recepcionista estará orientado principalmente a la atención del cliente y a
 - Registrar la entrega del equipo.
 - Consultar los indicadores operativos que tenga habilitados.
 
-El Recepcionista no podrá administrar roles ni crear cuentas con roles Administrador, Recepcionista o Técnico. Tampoco podrá realizar diagnósticos, reparaciones, modificar existencias ni aprobar o rechazar presupuestos en nombre del cliente.
+El rol Recepcionista, por sí solo, no habilita la administración de roles ni la creación de cuentas internas; estas acciones requieren Administrador. Una cuenta que además posea Técnico podrá realizar diagnósticos, reparaciones y consumos sobre sus órdenes asignadas, respetando los estados permitidos. Las entradas y ajustes de stock requieren Administrador. Ningún rol interno habilita la aprobación o el rechazo de presupuestos en nombre del Cliente.
 
 ### Técnico
 
@@ -170,7 +175,7 @@ El Técnico será responsable de las acciones directamente relacionadas con la r
 - Consultar repuestos.
 - Registrar los consumos reales de repuestos utilizados durante la reparación.
 
-El Técnico no podrá administrar clientes, equipos, usuarios, roles ni existencias generales del inventario.
+El rol Técnico, por sí solo, no habilita la administración de clientes, equipos, usuarios, roles ni existencias generales del inventario. Una cuenta que además posea Recepcionista o Administrador podrá gestionar clientes y equipos. Recepcionista permite crear cuentas CLIENTE de forma controlada durante el registro de clientes, conforme a las reglas existentes; la administración de cuentas internas y roles y las entradas y ajustes de stock requieren Administrador.
 
 ### Cliente
 
@@ -322,10 +327,10 @@ La documentación completa se encuentra en [Diseño de la base de datos](docs/en
 ## Despliegue
 
 - **Frontend:** publicado en [https://fixhub-five.vercel.app](https://fixhub-five.vercel.app) mediante Vercel, integrado con GitHub y con despliegues de producción desde `main`.
-- **Backend:** preparación Docker implementada para Render. La construcción y ejecución del contenedor y el despliegue en Render están pendientes.
-- **Base de datos:** MySQL 8.4.13 alojado en Railway, con el esquema y las operaciones funcionales probadas mediante conexión SSH. La conexión desde Render y su configuración TLS siguen pendientes.
+- **Backend:** publicado en [https://fixhub-backend.onrender.com](https://fixhub-backend.onrender.com) mediante Render y el contenedor Docker del repositorio.
+- **Base de datos:** MySQL 8.4.13 alojado en Railway, conectado al backend mediante TLS con `VERIFY_CA`.
 
-La integración del frontend publicado con la API pública todavía está pendiente; el sistema completo no se encuentra operativo en producción.
+El frontend consume la API pública del backend desplegado en Render.
 
 ## Alcance
 
@@ -354,11 +359,11 @@ Quedan fuera del alcance inicial:
 
 ## Tutor
 
-- Sofia Raia
+- Sofía Raia
 
 ## Estado del proyecto
 
-La Segunda Entrega de diseño y documentación se encuentra completada. El proyecto está en implementación y validación y cuenta con:
+La Segunda Entrega de diseño y documentación se encuentra completada y el MVP está implementado. El frontend está desplegado en Vercel, el backend en Render y la base de datos MySQL funciona en Railway. Continúan las validaciones y las tareas de cierre documental. El sistema cuenta con:
 
 - Autenticación JWT, gestión de usuarios y roles, cambio obligatorio de clave y respuestas de error 401/403.
 - Gestión de clientes y equipos, creación o reutilización de cuentas Cliente y consultas de información propia.
@@ -406,7 +411,7 @@ Configurar las variables del backend en el entorno del proceso:
 
 | Variable | Uso |
 | --- | --- |
-| `DB_URL` | URL JDBC de MySQL, con los parámetros TLS requeridos por el proveedor |
+| `DB_URL` | URL JDBC de MySQL; su formato depende de la ejecución Java directa o Docker, como se detalla debajo |
 | `DB_USERNAME` | Usuario de la base |
 | `DB_PASSWORD` | Contraseña de la base |
 | `JWT_SECRET` | Clave Base64 que represente al menos 32 bytes |
@@ -419,11 +424,15 @@ Configurar las variables del backend en el entorno del proceso:
 
 La propiedad `app.bootstrap.estados-orden.enabled` controla la inicialización de estados y está habilitada de forma predeterminada. Después de crear el administrador inicial, deshabilitar su bootstrap antes de retirar sus credenciales. Mantener `JWT_SECRET` estable entre reinicios.
 
-La aplicación no carga automáticamente archivos `.env`. No versionar secretos ni incluirlos en la imagen Docker.
+Las plantillas [backend/.env.example](backend/.env.example) y [frontend/.env.example](frontend/.env.example) enumeran las variables sin credenciales reales. Completar los valores en el entorno local o del proveedor. Spring Boot no carga automáticamente archivos `.env`: para el backend deben exportarse las variables al proceso. No versionar secretos ni incluirlos en la imagen Docker.
+
+Generar `JWT_SECRET` de forma privada como al menos 32 bytes aleatorios codificados en Base64. Los valores vacíos de la plantilla deben completarse antes de iniciar el backend; no representan credenciales disponibles.
 
 ### Backend
 
 Después de preparar MySQL y las variables, ejecutar desde `backend`:
+
+En esta ejecución Java directa se utiliza `DB_URL` tal como se suministra; no se ejecuta `docker-entrypoint.sh` ni se genera un truststore. Un ejemplo local sin credenciales es `jdbc:mysql://localhost:3306/fixhub`. Para una conexión remota deben configurarse los parámetros TLS y el truststore requeridos por el proveedor, sin desactivar la verificación de certificados.
 
 Windows PowerShell:
 
@@ -452,6 +461,8 @@ npm run dev
 
 La variable pública `VITE_API_BASE_URL` configura la dirección de la API, incluyendo `/api` y sin barra final. Su valor predeterminado es `http://localhost:8080/api`. No debe contener secretos. Para producción se incorpora durante el build; cambiarla requiere reconstruir el frontend.
 
+Para desarrollo puede copiarse `frontend/.env.example` a `frontend/.env.local`, que Vite carga automáticamente. En Vercel, el valor de producción es `https://fixhub-backend.onrender.com/api`.
+
 ```bash
 npm run build
 npm run preview
@@ -463,14 +474,41 @@ El build ejecuta TypeScript y Vite y genera `frontend/dist`, directorio de salid
 
 El [Dockerfile](backend/Dockerfile) multi-stage compila con Maven Wrapper y Java 25, ejecuta `verify` y utiliza un JRE 25 con usuario sin privilegios. [.dockerignore](backend/.dockerignore) excluye artefactos locales y configuraciones sensibles.
 
-Desde la raíz del repositorio, con Docker disponible:
+En esta ejecución, `DB_URL` debe contener únicamente servidor, puerto y base, por ejemplo `jdbc:mysql://servidor-mysql:3306/railway`, sin parámetros, fragmentos ni credenciales. `DB_USERNAME` y `DB_PASSWORD` se suministran por separado.
+
+El arranque exige el certificado CA público del servidor MySQL en `/etc/secrets/railway-ca.pem`. Crea un truststore PKCS12 temporal y agrega los parámetros JDBC de `VERIFY_CA`; no modifica el almacén general de certificados de Java. Si falta el certificado o no puede leerse, el contenedor no inicia.
+
+Desde la raíz del repositorio, con Docker disponible y las variables exportadas al entorno:
 
 ```bash
 docker build -t fixhub-backend:local backend
-docker run --rm -p 10000:10000 -e PORT=10000 -e DB_URL -e DB_USERNAME -e DB_PASSWORD -e JWT_SECRET fixhub-backend:local
+docker run --rm -p 10000:10000 -e PORT=10000 -e DB_URL -e DB_USERNAME -e DB_PASSWORD -e JWT_SECRET --mount "type=bind,source=RUTA_ABSOLUTA_DEL_CA,target=/etc/secrets/railway-ca.pem,readonly" fixhub-backend:local
 ```
 
-Las variables reenviadas deben estar configuradas en el entorno y apuntar a una base con el esquema preparado. El host MySQL debe ser accesible desde el contenedor; `localhost` dentro del contenedor no representa al equipo anfitrión.
+Reemplazar `RUTA_ABSOLUTA_DEL_CA` por la ruta absoluta del archivo CA público en el equipo. El archivo debe ser legible por el usuario sin privilegios del contenedor. No incorporar certificados ni secretos al repositorio. Las variables reenviadas deben apuntar a una base con el esquema preparado. El host MySQL debe ser accesible desde el contenedor; `localhost` dentro del contenedor no representa al equipo anfitrión.
+
+En Render se utiliza el contexto Docker `backend/`, se configuran las variables del backend y se monta el Secret File `railway-ca.pem` en `/etc/secrets/railway-ca.pem`. La imagen contempla el grupo 1000 para su lectura. Render proporciona `PORT`; no es necesario fijarlo a 8080. La configuración CORS conserva el origen del frontend publicado. No ejecutar los scripts SQL de instalación sobre la base productiva existente.
+
+### Acceso de evaluación y usuarios de prueba
+
+El equipo debe proporcionar por un canal privado las cuentas de evaluación autorizadas, sus roles y los datos ficticios habilitados para la demostración. No se publican credenciales administrativas ni se presupone que las cuentas ilustrativas de Postman existan. Quedan por confirmar los identificadores, el medio de entrega de las claves y las órdenes asignadas a cada Técnico de prueba.
+
+| Rol | Recorrido de evaluación |
+| --- | --- |
+| Administrador | Consultar usuarios, clientes, órdenes, presupuestos, catálogo y movimientos; realizar modificaciones únicamente sobre registros de demostración autorizados |
+| Recepcionista | Registrar clientes y equipos, gestionar recepción y entrega, asignar técnicos y publicar presupuestos |
+| Técnico | Trabajar sobre sus órdenes asignadas: diagnóstico, tareas, reparación y consumos |
+| Cliente | Consultar exclusivamente sus datos, equipos, órdenes y presupuestos; aprobar o rechazar los propios |
+
+Las cuentas internas pueden combinar roles y acumular permisos; Cliente es exclusivo. Si la cuenta exige cambiar la clave temporal, realizar el cambio y volver a iniciar sesión para obtener un JWT actualizado. No se presupone la existencia de un entorno de pruebas aislado: toda operación que modifique datos debe limitarse a registros de demostración expresamente autorizados por el equipo. No crear ni modificar cuentas ni otros registros productivos como parte de una prueba sin autorización.
+
+### Colección Postman
+
+Importar la [colección](docs/postman/FixHub.postman_collection.json) y el [entorno local](docs/postman/FixHub.postman_environment.json). Las variables están definidas en el entorno: configurar `baseUrl` sin `/api` ni barra final, `identificador` y `clave` privados, y ejecutar Login. El script guarda el token Bearer y `usuarioAutenticadoId`; `usuarioId` identifica por separado el usuario objetivo de una operación administrativa.
+
+Completar los IDs de recursos con registros ficticios de demostración autorizados por el equipo; los valores vacíos no son IDs válidos. Cambiar la sesión según los permisos indicados en cada grupo. Para reutilizar una cuenta como Cliente, `usuarioId` debe corresponder a CLIENTE exclusivo y no estar vinculado a otro Cliente. Cambiar la clave exige actualizar `clave` en el entorno y repetir Login.
+
+La colección incluye consultas y operaciones que alteran datos, roles, contraseñas, estados, presupuestos y stock. No ejecutarla completa mediante Runner contra producción. Elegir cada solicitud conscientemente sobre una base aislada: cancelación, decisiones de presupuesto, desactivación, retiro de roles y movimientos de stock tienen efectos persistentes. Aprobar y rechazar son alternativas, no pasos consecutivos sobre el mismo presupuesto. Los precios y contactos de los ejemplos son ficticios; no acreditan cuentas disponibles ni pruebas ejecutadas.
 
 ## Compilación y pruebas
 

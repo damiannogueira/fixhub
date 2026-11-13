@@ -44,10 +44,24 @@ async function loadUser(form: HTMLFormElement, id: number): Promise<void> {
       `<label><input type="checkbox" name="roles" value="${role}" ${user.roles.includes(role) || (linkedClient && role === 'CLIENTE') ? 'checked' : ''} ${linkedClient && role === 'CLIENTE' ? 'disabled' : ''}> ${formatRole(role)}</label>`,
     ).join('')}`;
     form.append(roleGroup);
+    const roleInputs = Array.from(roleGroup.querySelectorAll<HTMLInputElement>('input[name="roles"]'));
+    const clientInput = roleInputs.find((input) => input.value === 'CLIENTE')!;
+    const updateRoleOptions = () => {
+      for (const input of roleInputs) {
+        input.disabled = linkedClient || (input.value !== 'CLIENTE' && clientInput.checked);
+      }
+    };
+    clientInput.addEventListener('change', () => {
+      if (clientInput.checked) {
+        roleInputs.filter((input) => input !== clientInput).forEach((input) => { input.checked = false; });
+      }
+      updateRoleOptions();
+    });
+    updateRoleOptions();
     if (linkedClient) {
       const notice = document.createElement('p');
       notice.className = 'muted';
-      notice.textContent = 'Esta cuenta está vinculada a un Cliente: debe conservar CLIENTE y puede acumular otros roles.';
+      notice.textContent = 'Esta cuenta está vinculada a un Cliente: debe conservar únicamente CLIENTE.';
       form.append(notice);
     }
 
@@ -70,6 +84,10 @@ async function loadUser(form: HTMLFormElement, id: number): Promise<void> {
       const telefono = String(values.get('telefono') ?? '').trim();
       const selectedRoles = values.getAll('roles') as Rol[];
       if (linkedClient && !selectedRoles.includes('CLIENTE')) selectedRoles.push('CLIENTE');
+      if (selectedRoles.includes('CLIENTE') && selectedRoles.length > 1) {
+        showMessage(form, 'El rol CLIENTE no puede combinarse con roles internos.');
+        return;
+      }
       if ((!email && !telefono) || selectedRoles.length === 0) {
         showMessage(form, 'Ingresá email o teléfono y al menos un rol.');
         return;
