@@ -74,7 +74,7 @@ describe('LoginPage', () => {
     [['ADMINISTRADOR'], false, '/dashboard'],
     [['TECNICO'], false, '/dashboard'],
     [['CLIENTE'], false, '/mi-cuenta'],
-    [['CLIENTE', 'TECNICO'], false, '/dashboard'],
+    [['RECEPCIONISTA', 'TECNICO'], false, '/dashboard'],
     [['ADMINISTRADOR'], true, '/cambiar-clave'],
     [['CLIENTE'], true, '/cambiar-clave'],
   ])('login con roles %j y cambio de clave=%s navega a %s', async (roles, requiereCambioClave, destino) => {
