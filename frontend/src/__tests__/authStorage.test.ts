@@ -9,11 +9,7 @@ import {
   saveLoginResponse,
 } from '../utils/authStorage';
 
-function makeToken(payload: unknown): string {
-  const encode = (obj: unknown) =>
-    btoa(JSON.stringify(obj)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
-  return `${encode({ alg: 'HS256' })}.${encode(payload)}.firma`;
-}
+import { makeToken } from './fixtures/auth';
 
 describe('authStorage', () => {
   beforeEach(() => {
@@ -27,12 +23,12 @@ describe('authStorage', () => {
 
   it('decodeRoles rechaza tokens mal formados o sin roles', () => {
     expect(() => decodeRoles('abc')).toThrow();
-    expect(() => decodeRoles(makeToken({}))).toThrow();
+    expect(() => decodeRoles(makeToken({ roles: undefined }))).toThrow();
     expect(() => decodeRoles(makeToken({ roles: ['X'] }))).toThrow();
   });
 
   it('saveLoginResponse guarda token y bandera de cambio de clave', () => {
-    const token = makeToken({ roles: ['ADMINISTRADOR'] });
+    const token = makeToken({ roles: ['ADMINISTRADOR'], requiereCambioClave: true });
     const roles = saveLoginResponse({ token, requiereCambioClave: true } as never);
     expect(roles).toEqual(['ADMINISTRADOR']);
     expect(getAccessToken()).toBe(token);
@@ -50,5 +46,9 @@ describe('authStorage', () => {
     saveAuthMessage('hola');
     expect(consumeAuthMessage()).toBe('hola');
     expect(consumeAuthMessage()).toBeNull();
+  });
+
+  it.each([undefined, null, '3600', 1])('rechaza vencimiento ausente o inválido: %s', (exp) => {
+    expect(() => decodeRoles(makeToken({ exp }))).toThrow();
   });
 });

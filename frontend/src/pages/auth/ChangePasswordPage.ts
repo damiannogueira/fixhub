@@ -4,16 +4,17 @@ import { Input } from '../../components/ui/Input';
 import { changePassword } from '../../services/authService';
 import { router } from '../../router/router';
 import { resetAuthState } from '../../utils/authState';
-import { clearSession, saveAuthMessage } from '../../utils/authStorage';
+import { clearSession, getAccessToken, saveAuthMessage } from '../../utils/authStorage';
 
 export const ChangePasswordPage = {
   render(): HTMLElement {
     const wrapper = document.createElement('div');
     wrapper.className = 'login-wrapper';
+    let exited = false;
     const card = Card.render(`
       <div class="login-header">
         <h1>Cambiar contraseña</h1>
-        <p class="login-subtitle">Por seguridad, reemplazá tu credencial temporal.</p>
+        <p class="login-subtitle">Por seguridad, reemplazá tu credencial temporal. Si ya la cambiaste en otro navegador, cerrá sesión e ingresá con la nueva contraseña.</p>
       </div>
       <form id="change-password-form" class="login-form"></form>
     `);
@@ -28,6 +29,7 @@ export const ChangePasswordPage = {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (submit.disabled) return;
       const values = new FormData(form);
       const currentPassword = String(values.get('current-password') ?? '');
       const newPassword = String(values.get('new-password') ?? '');
@@ -39,6 +41,10 @@ export const ChangePasswordPage = {
       }
 
       submit.disabled = true;
+      const requestToken = getAccessToken();
+      const requestHash = window.location.hash;
+      const isCurrent = () => !exited && wrapper.isConnected
+        && getAccessToken() === requestToken && window.location.hash === requestHash;
       clearMessage(form);
       try {
         await changePassword({
@@ -46,16 +52,26 @@ export const ChangePasswordPage = {
           claveNueva: newPassword,
           confirmacionClave: confirmation,
         });
+        if (!isCurrent()) return;
         clearSession();
         resetAuthState();
         saveAuthMessage('Contraseña actualizada correctamente. Iniciá sesión nuevamente.');
         router.navigate('/login');
       } catch (error) {
+        if (!isCurrent()) return;
         showMessage(form, error instanceof Error ? error.message : 'No se pudo cambiar la contraseña.');
         submit.disabled = false;
       }
     });
 
+    const exit = Button.render({ text: 'Cerrar sesión y volver al inicio', variant: 'secondary', className: 'btn-full' });
+    exit.addEventListener('click', () => {
+      exited = true;
+      clearSession();
+      resetAuthState();
+      router.navigate('/');
+    });
+    card.appendChild(exit);
     wrapper.appendChild(card);
     return wrapper;
   },

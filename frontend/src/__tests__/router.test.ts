@@ -1,3 +1,5 @@
+import { makeToken, loginResponse } from './fixtures/auth';
+import type { Rol } from '../types/auth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Las páginas se reemplazan por stubs: acá se prueba el control de acceso del router, no el contenido.
@@ -34,9 +36,8 @@ vi.mock('../pages/usuarios/EditarUsuarioPage', () => ({ EditarUsuarioPage: { ren
 import { router } from '../router/router';
 import { resetAuthState, setAuthenticated } from '../utils/authState';
 
-function login(roles: string[], requiereCambioClave = false): void {
-  const payload = btoa(JSON.stringify({ roles })).replaceAll('=', '');
-  setAuthenticated({ token: `h.${payload}.s`, requiereCambioClave } as never);
+function login(roles: Rol[], requiereCambioClave = false): void {
+  setAuthenticated(loginResponse(roles, requiereCambioClave));
 }
 
 /** Navega a la ruta y devuelve [página renderizada, ruta final tras redirecciones]. */
@@ -93,7 +94,7 @@ describe('router: control de acceso', () => {
   });
 
   describe('permisos por rol', () => {
-    it.each([
+    it.each<[Rol, string, string]>([
       ['ADMINISTRADOR', '/usuarios', 'Usuarios'],
       ['ADMINISTRADOR', '/inventario/detalle', 'DetalleInventario'],
       ['RECEPCIONISTA', '/clientes', 'Clientes'],
@@ -107,7 +108,7 @@ describe('router: control de acceso', () => {
       expect(visit(path)[0]).toBe(page);
     });
 
-    it.each([
+    it.each<[Rol, string]>([
       ['TECNICO', '/usuarios'],
       ['TECNICO', '/clientes'],
       ['TECNICO', '/inventario/detalle'],
@@ -148,5 +149,25 @@ describe('router: control de acceso', () => {
       expect(visit('/ordenes/detalle?id=1')[0]).toBe('DetalleGestion');
       expect(visit('/ordenes/detalle?id=1&vista=tecnico')[0]).toBe('DetalleTecnico');
     });
+  });
+  it('un token antiguo vencido no genera un bucle desde login', () => {
+    localStorage.setItem('access_token', makeToken({ exp: 1 }));
+    localStorage.setItem('fixhub.requires_password_change', 'true');
+    expect(visit('/login')[0]).toBe('Login');
+    expect(visit('/dashboard')[1]).toBe('#/login');
+    expect(visit('/')[0]).toBe('Landing');
+  });
+
+  it('un JWT sin exp no permite abrir una ruta privada', () => {
+    localStorage.setItem('access_token', makeToken({ exp: undefined }));
+    expect(visit('/dashboard')[1]).toBe('#/login');
+    expect(visit('/login')[0]).toBe('Login');
+  });
+
+  it('los parámetros de consulta no evitan el cambio obligatorio', () => {
+    login(['ADMINISTRADOR'], true);
+    expect(visit('/login?origen=inicio')[1]).toBe('#/cambiar-clave');
+    expect(visit('/dashboard?origen=inicio')[1]).toBe('#/cambiar-clave');
+    expect(visit('/cambiar-clave?origen=inicio')[0]).toBe('ChangePassword');
   });
 });

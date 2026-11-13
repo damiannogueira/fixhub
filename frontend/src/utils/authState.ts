@@ -37,20 +37,39 @@ export function setAuthenticated(response: LoginResponse): void {
   };
 }
 
+function syncSession(): void {
+  const token = getAccessToken();
+  if (!token) {
+    resetAuthState();
+    return;
+  }
+  try {
+    const roles = decodeRoles(token);
+    if (state.response?.token !== token) state = { response: null, roles };
+  } catch {
+    clearSession();
+    resetAuthState();
+  }
+}
+
 export function getAuthState(): Readonly<AuthState> {
+  syncSession();
   return state;
 }
 
 export function hasAnyRole(roles: readonly Rol[]): boolean {
+  syncSession();
   return roles.some((role) => state.roles.includes(role));
 }
 
 export function hasAuthenticatedSession(): boolean {
+  syncSession();
   return state.roles.length > 0;
 }
 
 export function requiresPasswordChange(): boolean {
-  return state.response?.requiereCambioClave === true || getPasswordChangeRequired();
+  syncSession();
+  return getPasswordChangeRequired();
 }
 
 export function markPasswordChanged(): void {
