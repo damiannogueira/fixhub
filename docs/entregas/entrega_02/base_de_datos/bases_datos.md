@@ -3,6 +3,8 @@
 Este documento presenta el diseño de la base de datos relacional de FixHub como parte de la Segunda Entrega del Trabajo Final Integrador.
 El modelado se realizó a partir de los requerimientos, las reglas de negocio y los módulos documentados para el proyecto y consolidados durante la Segunda Entrega.
 
+Actualización posterior del equipo: Cliente pasa a ser un rol exclusivo y solo los roles internos pueden combinarse. Esta decisión reemplaza la combinación de Cliente con roles internos aprobada en la Segunda Entrega, sin cambiar las cardinalidades del DER; véase el [historial del TFI](../../historial.md).
+
 ## 1. Diagrama Entidad-Relación
 
 A continuación se presenta el diagrama DER del sistema. Las relaciones indican la cardinalidad entre las entidades principales.
@@ -194,7 +196,7 @@ erDiagram
 ### 2.1. Módulo de Autenticación, Usuarios y Roles
 
 #### Tabla `usuarios`
-Representa las cuentas de acceso al sistema. Un usuario puede tener uno o varios roles y debe contar con al menos un medio de contacto válido: correo electrónico o número de celular.
+Representa las cuentas de acceso al sistema. Un usuario puede combinar los roles internos Administrador, Recepcionista y Técnico, o tener únicamente Cliente. Debe contar con al menos un medio de contacto válido: correo electrónico o número de celular.
 
 | Campo | Tipo | Descripción |
 |---|---|---|
@@ -407,7 +409,7 @@ Estas características hacen que un modelo relacional sea más adecuado que uno 
 
 ### 3.2. Relación entre usuarios, roles y clientes
 
-- Se definió una **relación muchos a muchos** entre `usuarios` y `roles` mediante la tabla intermedia `usuarios_roles`, ya que una misma cuenta puede tener varios roles simultáneamente (por ejemplo, un propietario que es Administrador y Técnico a la vez) y sus permisos se acumulan.
+- Se definió una **relación muchos a muchos** entre `usuarios` y `roles` mediante la tabla intermedia `usuarios_roles`, ya que una misma cuenta puede tener varios roles internos simultáneamente (por ejemplo, un propietario que es Administrador y Técnico a la vez) y sus permisos se acumulan. La exclusividad de Cliente se valida en el backend.
 - La relación entre `clientes` y `usuarios` es **uno a uno** (`usuario_id` con restricción `UNIQUE`), respetando la regla de negocio que indica que cada cliente tiene asociada una única cuenta de acceso y que esa cuenta no puede representar a más de un cliente.
 
 ### 3.3. Orden de trabajo como entidad central
@@ -483,4 +485,4 @@ El DDL no reemplaza las validaciones de negocio de los servicios: permisos, tran
 
 Estos scripts son exclusivamente para una base vacía. No constituyen una migración ni modifican instalaciones existentes. Cambiar `INT` a `BIGINT` requiere revisar también las FK; convertir `TIMESTAMP` a `DATETIME` requiere revisar los valores y la zona horaria de la sesión antes de diseñar una migración separada. La collation heredada de la base influye en las comparaciones y restricciones únicas y debe revisarse con el proveedor.
 
-El esquema se ejecutó y verificó estructuralmente en MySQL 8.4.13 de Railway. También se probaron operaciones funcionales del backend mediante conexión SSH. La conexión desde Render sigue pendiente.
+El esquema se ejecutó y verificó estructuralmente en MySQL 8.4.13 de Railway. También se probaron operaciones funcionales del backend mediante conexión SSH. El backend desplegado en Render se conecta a Railway mediante TLS con `VERIFY_CA`.

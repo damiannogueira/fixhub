@@ -79,7 +79,7 @@ export const CrearUsuarioPage = {
     clientFields.innerHTML = `
       <p class="muted form-intro">Datos del cliente</p>
       <label class="form-label"><input type="checkbox" id="reuse-account"> Vincular una cuenta existente</label>
-      <div class="form-group" id="existing-account" hidden><label class="form-label" for="usuarioId">ID de la cuenta existente</label><input class="form-input" id="usuarioId" name="usuarioId" type="number" min="1"><small class="muted">Ingresá el ID de la cuenta a reutilizar. Debe estar libre de otro Cliente; se conservarán sus roles y se agregará CLIENTE.</small></div>
+      <div class="form-group" id="existing-account" hidden><label class="form-label" for="usuarioId">ID de la cuenta existente</label><input class="form-input" id="usuarioId" name="usuarioId" type="number" min="1"><small class="muted">Ingresá el ID de una cuenta con rol CLIENTE exclusivo, sin roles internos y libre de otro Cliente.</small></div>
       <div class="form-group"><label class="form-label" for="nombre">Nombre</label><input class="form-input" id="nombre" name="nombre" maxlength="255"></div>
       <div class="form-group"><label class="form-label" for="apellido">Apellido</label><input class="form-input" id="apellido" name="apellido" maxlength="255"></div>
       <div class="form-group"><label class="form-label" for="dni">DNI</label><input class="form-input" id="dni" name="dni" maxlength="255"></div>

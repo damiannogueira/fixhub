@@ -20,3 +20,11 @@ Este documento resume de forma breve los principales cambios realizados durante 
 - Se documentaron los requerimientos, reglas de negocio, roles, permisos y flujo de las órdenes de trabajo.
 - Se realizó el diseño relacional de la base de datos con su DER, diccionario de datos y justificación.
 - A partir de la revisión de la tutora se incorporó el diagrama de estados de las órdenes de trabajo y se creó este historial de seguimiento.
+
+## Revisión posterior — Política de roles del MVP
+
+- En la Segunda Entrega se aprobó que una cuenta pudiera combinar Cliente con roles internos.
+- Posteriormente, los tres integrantes acordaron que Cliente será exclusivo y no podrá combinarse con Administrador, Recepcionista ni Técnico.
+- Administrador, Recepcionista y Técnico podrán combinarse libremente y sus permisos se acumularán.
+- La vinculación de una cuenta a un Cliente deberá respetar esta exclusividad y conservar el acceso únicamente a sus datos y acciones habilitadas.
+- La decisión no modifica los cinco módulos ni las relaciones del DER. Su aplicación requiere validación del backend y coherencia del frontend y la documentación.

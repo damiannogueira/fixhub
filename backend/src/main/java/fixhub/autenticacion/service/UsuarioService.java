@@ -46,6 +46,7 @@ public class UsuarioService {
 
     @Transactional
     public UsuarioResponse crear(CrearUsuarioRequest request) {
+        validarClaveNueva(request.claveTemporal());
         String email = normalizarEmail(request.email());
         String telefono = normalizarContacto(request.telefono());
 
@@ -92,6 +93,7 @@ public class UsuarioService {
         String telefono,
         String claveTemporal
     ) {
+        validarClaveNueva(claveTemporal);
         String emailNormalizado = normalizarEmail(email);
         String telefonoNormalizado = normalizarContacto(telefono);
 
@@ -114,6 +116,10 @@ public class UsuarioService {
 
     @Transactional
     public Usuario asegurarRolCliente(Usuario usuario) {
+        Set<NombreRol> roles = usuario.getRoles().stream()
+            .map(Rol::getNombre).collect(Collectors.toSet());
+        roles.add(NombreRol.CLIENTE);
+        validarCombinacionRoles(roles);
         if (!usuario.tieneRol(NombreRol.CLIENTE)) {
             usuario.agregarRol(buscarRol(NombreRol.CLIENTE));
             return usuarioRepository.save(usuario);
@@ -165,6 +171,10 @@ public class UsuarioService {
             telefono
         );
 
+        if (request.claveTemporal() != null && !request.claveTemporal().isBlank()) {
+            validarClaveNueva(request.claveTemporal());
+        }
+
         usuario.setEmail(email);
         usuario.setTelefono(telefono);
         usuario.getRoles().clear();
@@ -207,6 +217,11 @@ public class UsuarioService {
         NombreRol nombreRol
     ) {
         Usuario usuario = buscarUsuarioPorId(usuarioId);
+
+        Set<NombreRol> roles = usuario.getRoles().stream()
+            .map(Rol::getNombre).collect(Collectors.toSet());
+        roles.add(nombreRol);
+        validarCombinacionRoles(roles);
 
         if (!usuario.tieneRol(nombreRol)) {
             Rol rol = buscarRol(nombreRol);
@@ -264,6 +279,11 @@ public class UsuarioService {
             throw new ClaveActualIncorrectaException();
         }
 
+        validarClaveNueva(request.claveNueva());
+        if (passwordEncoder.matches(request.claveNueva(), usuario.getPasswordHash())) {
+            throw new IllegalArgumentException("La nueva contraseña debe ser diferente de la actual");
+        }
+
         String nuevoPasswordHash =
             passwordEncoder.encode(request.claveNueva());
 
@@ -271,6 +291,12 @@ public class UsuarioService {
         usuario.setRequiereCambioClave(false);
 
         usuarioRepository.save(usuario);
+    }
+
+    private void validarClaveNueva(String clave) {
+        if (clave != null && !clave.isEmpty() && clave.codePoints().allMatch(Character::isDigit)) {
+            throw new IllegalArgumentException("La contraseña no puede estar compuesta exclusivamente por dígitos");
+        }
     }
 
     private void validarIdentificadoresDisponibles(
@@ -321,9 +347,16 @@ public class UsuarioService {
     }
 
     private Set<Rol> buscarRoles(Set<NombreRol> nombresRoles) {
+        validarCombinacionRoles(nombresRoles);
         return nombresRoles.stream()
             .map(this::buscarRol)
             .collect(Collectors.toSet());
+    }
+
+    private void validarCombinacionRoles(Set<NombreRol> roles) {
+        if (roles.contains(NombreRol.CLIENTE) && roles.size() > 1) {
+            throw new IllegalArgumentException("El rol CLIENTE no puede combinarse con roles internos");
+        }
     }
 
     private Rol buscarRol(NombreRol nombreRol) {
