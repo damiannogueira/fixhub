@@ -1,3 +1,4 @@
+import { makeToken, loginResponse, deferred } from './fixtures/auth';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { loginMock, navigateMock } = vi.hoisted(() => ({
@@ -12,8 +13,8 @@ import { LoginPage } from '../pages/auth/LoginPage';
 import { resetAuthState } from '../utils/authState';
 import { saveAuthMessage } from '../utils/authStorage';
 
-function tokenFor(roles: string[]): string {
-  return `h.${btoa(JSON.stringify({ roles })).replaceAll('=', '')}.s`;
+function tokenFor(roles: string[], requiereCambioClave = false): string {
+  return makeToken({ roles, requiereCambioClave });
 }
 
 function setup(username: string, password: string) {
@@ -78,11 +79,11 @@ describe('LoginPage', () => {
     [['ADMINISTRADOR'], true, '/cambiar-clave'],
     [['CLIENTE'], true, '/cambiar-clave'],
   ])('login con roles %j y cambio de clave=%s navega a %s', async (roles, requiereCambioClave, destino) => {
-    loginMock.mockResolvedValue({ token: tokenFor(roles), requiereCambioClave });
+    loginMock.mockResolvedValue({ token: tokenFor(roles, requiereCambioClave), requiereCambioClave });
     const { send } = setup('ana@fixhub.com', 'clave-segura');
     send();
     await vi.waitFor(() => expect(navigateMock).toHaveBeenCalledWith(destino));
-    expect(localStorage.getItem('access_token')).toBe(tokenFor(roles));
+    expect(localStorage.getItem('access_token')).toBe(tokenFor(roles, requiereCambioClave));
   });
 
   it('si el login falla muestra el error y vuelve a habilitar el botón', async () => {
@@ -93,6 +94,40 @@ describe('LoginPage', () => {
     await vi.waitFor(() => expect(form.querySelector('.form-alert-error')).not.toBeNull());
     expect(form.querySelector('.form-alert-error')?.textContent).toBe('El identificador o la contraseña son incorrectos.');
     expect(submit.disabled).toBe(false);
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['inicio', 'otra sesión', 'pantalla reemplazada'])('ignora el login tardío después de %s', async (destination) => {
+    const pending = deferred<ReturnType<typeof loginResponse>>();
+    loginMock.mockReturnValue(pending.promise);
+    const { page, send } = setup('demo@example.test', 'Temporal123');
+    send();
+    let activeToken: string | null = null;
+    if (destination === 'inicio') {
+      page.querySelector('a')!.dispatchEvent(new MouseEvent('click', { cancelable: true }));
+    } else if (destination === 'otra sesión') {
+      activeToken = makeToken({ sub: '2' });
+      localStorage.setItem('access_token', activeToken);
+    } else {
+      document.body.replaceChildren();
+    }
+    pending.resolve(loginResponse());
+    await pending.promise;
+    await Promise.resolve();
+    expect(localStorage.getItem('access_token')).toBe(activeToken);
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('no muestra un error de login después de volver al inicio', async () => {
+    const pending = deferred<ReturnType<typeof loginResponse>>();
+    loginMock.mockReturnValue(pending.promise);
+    const { page, send } = setup('demo@example.test', 'Temporal123');
+    send();
+    page.querySelector('a')!.dispatchEvent(new MouseEvent('click', { cancelable: true }));
+    pending.reject(new Error('Credenciales incorrectas'));
+    await pending.promise.catch(() => {});
+    await Promise.resolve();
+    expect(page.querySelector('.form-alert')).toBeNull();
     expect(navigateMock).not.toHaveBeenCalled();
   });
 });

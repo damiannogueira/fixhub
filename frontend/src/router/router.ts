@@ -20,7 +20,6 @@ import { DetalleInventarioPage } from '../pages/inventario/DetalleInventarioPage
 import { DetalleOrdenGestionPage } from '../pages/ordenes/DetalleOrdenGestionPage';
 import { DetalleOrdenTecnicoPage } from '../pages/ordenes/DetalleOrdenTecnicoPage';
 import type { Rol } from '../types/auth';
-import { getAccessToken } from '../utils/authStorage';
 import { hasAnyRole, hasAuthenticatedSession, requiresPasswordChange } from '../utils/authState';
 import { wantsTechnicianView } from '../utils/technicianView';
 
@@ -63,14 +62,15 @@ function getCurrentPath(): string {
 }
 
 function renderCurrentRoute(): HTMLElement {
-  const path = getCurrentPath();
-  const route = routes[path.split('?')[0]];
+  const authenticated = hasAuthenticatedSession();
+  const path = getCurrentPath().split('?')[0];
+  const route = routes[path];
 
   if (!route) {
     return NotFoundPage.render();
   }
 
-  if ((path === '/' || path === '/login') && getAccessToken()) {
+  if ((path === '/' || path === '/login') && authenticated) {
     navigate(requiresPasswordChange() ? '/cambiar-clave' : getHomeRoute());
     return document.createElement('div');
   }
@@ -81,7 +81,7 @@ function renderCurrentRoute(): HTMLElement {
       : '/dashboard';
   }
 
-  if (!route.public && (!getAccessToken() || !hasAuthenticatedSession())) {
+  if (!route.public && !authenticated) {
     navigate('/login');
     return document.createElement('div');
   }

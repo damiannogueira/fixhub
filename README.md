@@ -69,6 +69,18 @@ Las decisiones del proyecto se registran en el [historial del TFI](docs/entregas
 - El rol Recepcionista, por sí solo, no habilita la creación de usuarios con roles internos ni la administración de roles; estas acciones requieren el rol Administrador.
 - La integración automática con WhatsApp Business continuará fuera del alcance del MVP.
 
+### Contraseñas y sesiones
+
+Las cuentas nuevas, incluidas las internas, requieren reemplazar su clave temporal. Restablecer una clave desde la administración vuelve a activar `requiereCambioClave`. El cambio valida la clave actual, guarda el hash de la nueva y desactiva el indicador en la base; el frontend cierra esa sesión y solicita un nuevo login.
+
+El JWT firmado contiene los roles y `requiereCambioClave` del momento del login, con vencimiento configurable (una hora por defecto). El frontend persiste el token y un indicador auxiliar en `localStorage`; al restaurar exige un `exp` numérico, finito y futuro, comprueba formato y roles, y prioriza el indicador del JWT cuando existe. También descarta tokens vencidos o sin `exp` antes de enviar solicitudes autenticadas. Estas comprobaciones de interfaz no sustituyen la validación de firma y permisos del backend. Un 401 solo limpia la sesión si el token de la solicitud sigue siendo el activo. Login se envía sin el JWT anterior.
+
+Cambiar o restablecer una contraseña en otro navegador no renueva ni revoca los JWT emitidos. Un token anterior con cambio obligatorio sigue limitado aunque la cuenta ya haya completado el cambio; corresponde cerrar sesión e ingresar con la nueva clave, sin repetir el cambio. Un token anterior sin esa restricción puede continuar vigente hasta vencer incluso tras un restablecimiento administrativo. El MVP no implementa revocación global ni refresh tokens. Las pestañas del mismo origen comparten almacenamiento y sincronizan sus cambios; otros navegadores mantienen sesiones independientes. Cambiar efectivamente de sesión vuelve a renderizar la pantalla; cambios redundantes del almacenamiento conservan el formulario abierto.
+
+Cerrar sesión elimina token, indicador auxiliar y estado en memoria y regresa a `#/`. Login ofrece volver al inicio y la pantalla de cambio obligatorio permite cerrar sesión para volver. Estas salidas no habilitan rutas privadas sin completar el cambio y obtener un JWT nuevo.
+
+Las respuestas pendientes de login o cambio de contraseña se descartan si se abandonó la pantalla o cambió la sesión. Salir durante un cambio de contraseña no cancela una operación que el servidor ya haya recibido; si se completó, el siguiente ingreso debe utilizar la nueva clave.
+
 ### Clientes, equipos y órdenes de trabajo
 
 - Toda orden de trabajo deberá estar asociada a un cliente y a un equipo.
@@ -295,7 +307,8 @@ Los estados `ENTREGADA` y `CANCELADA` se consideran estados finales.
 - CSS
 - JavaScript
 - TypeScript
-- Vite
+- Vite 8.3.8
+- Vitest y jsdom para pruebas automatizadas del frontend
 
 ### Backend
 
@@ -332,6 +345,10 @@ La documentación completa se encuentra en [Diseño de la base de datos](docs/en
 
 El frontend consume la API pública del backend desplegado en Render.
 
+### Limitaciones conocidas
+
+La base MySQL está alojada en Railway y el proyecto está sujeto a los créditos disponibles en ese servicio. Hasta completar la grabación del video se mantiene un conjunto limitado de datos de demostración para administrar los recursos. Antes de la evaluación será necesario comprobar la disponibilidad del sistema desplegado.
+
 ## Alcance
 
 El MVP está orientado a talleres y servicios técnicos pequeños o medianos y busca resolver principalmente la gestión operativa de reparaciones.
@@ -363,7 +380,7 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-La Segunda Entrega de diseño y documentación se encuentra completada y el MVP está implementado. El frontend está desplegado en Vercel, el backend en Render y la base de datos MySQL funciona en Railway. Continúan las validaciones y las tareas de cierre documental. El sistema cuenta con:
+La Segunda Entrega de diseño y documentación se encuentra completada y el MVP está implementado. El frontend está desplegado en Vercel, el backend en Render y la base de datos MySQL funciona en Railway. Los PR #25 y #26 están integrados en `main`. Continúan las validaciones y el cierre documental: existe [el informe final en Markdown](docs/informe-final.md), pero su PDF definitivo y el video explicativo final siguen pendientes. El TFI no se considera entregado ni cerrado definitivamente. El sistema cuenta con:
 
 - Autenticación JWT, gestión de usuarios y roles, cambio obligatorio de clave y respuestas de error 401/403.
 - Gestión de clientes y equipos, creación o reutilización de cuentas Cliente y consultas de información propia.
@@ -380,7 +397,7 @@ La Segunda Entrega de diseño y documentación se encuentra completada y el MVP 
 
 - Java 25 y Maven Wrapper incluido en el repositorio.
 - MySQL 8.0.16 o superior, para aplicar las restricciones `CHECK` del esquema.
-- Node.js y npm para el frontend. Vite requiere Node `^20.19.0 || >=22.12.0`.
+- Node.js y npm para el frontend. Para ejecutar también las pruebas con jsdom 31, usar Node `^22.22.2 || ^24.15.0 || >=26.0.0`.
 - Docker, únicamente para construir y ejecutar el contenedor del backend.
 
 ### Inicialización de MySQL
@@ -468,7 +485,7 @@ npm run build
 npm run preview
 ```
 
-El build ejecuta TypeScript y Vite y genera `frontend/dist`, directorio de salida utilizado en Vercel. No hay scripts de lint ni tests de frontend configurados.
+El build ejecuta TypeScript y Vite y genera `frontend/dist`, directorio de salida utilizado en Vercel. Las pruebas se ejecutan con `npm test` (Vitest sobre jsdom); no hay script de lint configurado.
 
 ### Contenedor del backend
 
@@ -528,8 +545,21 @@ En macOS y Linux:
 
 `test` ejecuta las pruebas y `verify` también compila y empaqueta el JAR ejecutable en `backend/target/backend-0.0.1-SNAPSHOT.jar`.
 
+Desde `frontend`, ejecutar `npm ci`, `npm test` y `npm run build`. Vitest usa jsdom y simula las llamadas HTTP: estas pruebas no acceden al backend ni a MySQL. Los PR integrados incorporaron 85 pruebas del frontend en 8 archivos; la auditoría de sesiones agrega 34 casos de regresión, con **119 pruebas aprobadas en 10 archivos** en la ejecución del 13/11/2026. Incluyen respuestas tardías, vencimiento de JWT, navegación y eventos `storage` simulados, con conservación del formulario ante cambios redundantes. `npm run build` también finalizó correctamente.
+
+La validación del frontend se ejecutó con Node **24.15.0** local, sin cambiar la instalación global. Vite se actualizó puntualmente de 8.3.2 a **8.3.8**, con su lockfile; la consulta final de `npm audit` del 13/11/2026 informó **0 vulnerabilidades**.
+
+La ejecución local de `mvnw verify` del 13/11/2026 confirmó **334 pruebas del backend, sin fallas, errores ni omitidas**, con `BUILD SUCCESS` y generación del JAR.
+
 Las pruebas del backend abarcan seguridad, controllers, servicios, repositories y transacciones, y utilizan H2 en memoria en modo MySQL cuando requieren persistencia. No sustituyen la validación integral contra MySQL ni las pruebas de integración del sistema desplegado.
 
 ## Trabajo Final Integrador
 
 Proyecto desarrollado como Trabajo Final Integrador de la Tecnicatura Universitaria en Programación a Distancia.
+
+Recursos de entrega pendientes de completar por Gabriel cuando estén disponibles:
+
+| Recurso | Estado |
+| --- | --- |
+| PDF definitivo del informe | PENDIENTE: incorporar aquí el enlace después de generar el PDF |
+| Video explicativo final | PENDIENTE: incorporar aquí el enlace definitivo y completar también la sección 8 de `docs/informe-final.md` |
