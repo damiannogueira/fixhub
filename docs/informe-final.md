@@ -42,14 +42,14 @@ De ese funcionamiento el equipo identificó problemas puntuales: no había una f
 
 ### 1.2 Usuarios y actores
 
-El sistema contempla cuatro roles, que pueden acumularse en una misma cuenta:
+El sistema contempla cuatro roles. Los tres roles internos (Administrador, Recepcionista y Técnico) pueden combinarse en una misma cuenta, que acumula sus permisos. El rol Cliente es exclusivo y no se combina con los internos:
 
 - **Administrador:** gestiona usuarios, roles, clientes, repuestos y stock, y puede consultar toda la información del sistema.
 - **Recepcionista:** atiende al cliente, registra clientes y equipos, crea órdenes de trabajo, asigna técnicos, publica presupuestos y registra la entrega del equipo.
 - **Técnico:** trabaja sobre las órdenes que tiene asignadas: diagnostica, registra tareas, repara y declara los repuestos consumidos.
 - **Cliente:** accede a un portal propio para ver sus equipos, el estado de sus reparaciones y sus presupuestos, y para aprobarlos o rechazarlos.
 
-Una misma cuenta podrá tener uno o varios roles simultáneamente. La cantidad de actores puede variar según el contexto en el que se emplee el sistema (Taller pequeño o grande). 
+Una cuenta interna podrá tener uno o varios de los roles Administrador, Recepcionista y Técnico simultáneamente, mientras que una cuenta con rol Cliente no podrá tener ningún otro rol. La cantidad de actores puede variar según el contexto en el que se emplee el sistema (Taller pequeño o grande). 
 
 ### 1.3 Evidencia de validación del problema
 
@@ -98,13 +98,13 @@ Además, el modelo mantiene restricciones deliberadas de simplicidad: cada orden
 
 El modelo relacional tiene 15 tablas. Se agrupan en cuatro áreas: accesos (`usuarios`, `roles`, `usuarios_roles`), clientes y equipos (`clientes`, `equipos`), órdenes (`estados_orden`, `ordenes_trabajo`, `diagnosticos`, `registros_tecnicos`, `historial_ordenes`) y presupuestos e inventario (`presupuestos`, `detalles_presupuesto`, `repuestos`, `consumos_repuesto`, `movimientos_stock`).
 
-Los puntos centrales del modelo son los siguientes. Un cliente está ligado a exactamente una cuenta de usuario (clave única en `clientes.usuario_id`), y un usuario puede tener varios roles a través de la tabla intermedia. Cada equipo pertenece a un cliente, y cada orden de trabajo se asocia a un equipo, a un estado y, opcionalmente, a un técnico, que es un usuario. Cada orden tiene como máximo un diagnóstico (clave única en `diagnosticos.orden_id`) y como máximo un presupuesto (clave única en `presupuestos.orden_id`). Las líneas del presupuesto referencian repuestos, y cada consumo real de repuesto se vincula con un movimiento de stock.
+Los puntos centrales del modelo son los siguientes. Un cliente está ligado a exactamente una cuenta de usuario (clave única en `clientes.usuario_id`), y un usuario está asociado a lo sumo a un cliente: las cuentas internas no tienen ninguno. Un usuario puede tener varios roles a través de la tabla intermedia, con la restricción de que el rol Cliente no se combina con los internos. Cada equipo pertenece a un cliente, y cada orden de trabajo se asocia a un equipo, a un estado y, opcionalmente, a un técnico, que es un usuario. Cada orden tiene como máximo un diagnóstico (clave única en `diagnosticos.orden_id`) y como máximo un presupuesto (clave única en `presupuestos.orden_id`). Las líneas del presupuesto referencian repuestos, y cada consumo real de repuesto se vincula con un movimiento de stock.
 
 ```mermaid
 erDiagram
     USUARIOS ||--o{ USUARIOS_ROLES : tiene
     ROLES ||--o{ USUARIOS_ROLES : asignado
-    USUARIOS ||--|| CLIENTES : "cuenta de"
+    USUARIOS ||--o| CLIENTES : "cuenta de"
     CLIENTES ||--o{ EQUIPOS : posee
     EQUIPOS ||--o{ ORDENES_TRABAJO : "recibe"
     USUARIOS |o--o{ ORDENES_TRABAJO : "tecnico responsable"
@@ -177,7 +177,7 @@ El diccionario de datos completo y la justificación del diseño están en [docs
 
 Las reglas siguientes están implementadas en el backend. Se indica entre paréntesis dónde se aplican.
 
-**Acceso y cuentas.** Una cuenta puede tener varios roles y acumula sus permisos. Cada cliente se vincula con una única cuenta, y un cliente que ya tiene cuenta la reutiliza para nuevos equipos y órdenes. No existe registro público de usuarios: las cuentas las crea personal autorizado. La cuenta nueva nace con una clave temporal y el indicador `requiere_cambio_clave` activo; mientras ese indicador esté activo, un filtro de seguridad bloquea el uso del resto de la API hasta que se cambie la clave (`CambioClaveObligatorioFilter`). Se puede ingresar con correo electrónico o con teléfono.
+**Acceso y cuentas.** Los roles internos (Administrador, Recepcionista y Técnico) pueden combinarse en una misma cuenta, que acumula sus permisos. El rol Cliente es exclusivo: el backend rechaza combinarlo con roles internos (`UsuarioService`). Las contraseñas no pueden estar formadas solo por dígitos, y la nueva clave debe ser distinta de la actual. Cada cliente se vincula con una única cuenta, y un cliente que ya tiene cuenta la reutiliza para nuevos equipos y órdenes. No existe registro público de usuarios: las cuentas las crea personal autorizado. La cuenta nueva nace con una clave temporal y el indicador `requiere_cambio_clave` activo; mientras ese indicador esté activo, un filtro de seguridad bloquea el uso del resto de la API hasta que se cambie la clave (`CambioClaveObligatorioFilter`). Se puede ingresar con correo electrónico o con teléfono.
 
 **Órdenes de trabajo.** Toda orden se asocia a un equipo y, por medio de él, a un cliente. Las transiciones de estado válidas son las del diagrama siguiente, y cualquier otra se rechaza con `TransicionEstadoInvalidaException`. Una orden puede crearse sin técnico, pero necesita uno antes de pasar a `EN_DIAGNOSTICO` (`TecnicoRequeridoException`). Las transiciones técnicas solo las puede hacer el técnico asignado. La cancelación solo está permitida desde `RECIBIDA`, `EN_DIAGNOSTICO`, `PENDIENTE_APROBACION` y `APROBADA` (`OrdenNoCancelableException`), exige un motivo y queda en el historial. Cada asignación de técnico, cambio de estado y cancelación se registra en `historial_ordenes`.
 
@@ -329,7 +329,7 @@ Del código se desprenden varias soluciones a problemas técnicos: la protecció
 
 ### 6.1 Qué se probó
 
-El backend cuenta con 39 clases de prueba y 224 métodos de prueba automáticos (JUnit). Cubren la seguridad (generación y validación del JWT, respuestas 401 y 403, servicio de usuarios), los controllers (con las reglas de acceso por rol), los services con sus reglas de negocio, los repositories y las transacciones, y los inicializadores de roles, estados y administrador. Las pruebas que necesitan persistencia usan H2 en memoria en modo compatible con MySQL.
+El backend cuenta con 41 clases de prueba y 263 métodos de prueba automáticos (JUnit), 229 simples y 34 parametrizados. Cubren la seguridad (generación y validación del JWT, respuestas 401 y 403, servicio de usuarios, exclusividad del rol Cliente y política de contraseñas), los controllers (con las reglas de acceso por rol), los services con sus reglas de negocio, los repositories y las transacciones, y los inicializadores de roles, estados y administrador. Las pruebas que necesitan persistencia usan H2 en memoria en modo compatible con MySQL.
 
 Se ejecutan desde la carpeta `backend`:
 
@@ -338,7 +338,7 @@ Se ejecutan desde la carpeta `backend`:
 ./mvnw verify    # además compila y empaqueta el JAR
 ```
 
-La última ejecución completa de `./mvnw test`, realizada el 12/11/2026, resultó en **298 pruebas ejecutadas, 0 fallas, 0 errores y 0 omitidas**, con el resultado `BUILD SUCCESS` en 26,4 segundos. La cantidad de ejecuciones supera la de métodos de prueba porque varios son parametrizados y se ejecutan una vez por cada conjunto de valores.
+La última ejecución completa de `./mvnw test`, realizada el 13/11/2026, resultó en **334 pruebas ejecutadas, 0 fallas, 0 errores y 0 omitidas**, con el resultado `BUILD SUCCESS` en 29,1 segundos. La cantidad de ejecuciones supera la de métodos de prueba porque varios son parametrizados y se ejecutan una vez por cada conjunto de valores.
 
 ![Figura 7. Resultado de la ejecución de las pruebas](img/captura-tests.png)
 
