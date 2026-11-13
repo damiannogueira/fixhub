@@ -12,7 +12,7 @@ Informe Final del Trabajo Final Integrador
 
 | | |
 |---|---|
-| **Universidad** | Universidad Tecnologica Nacional |
+| **Universidad** | Universidad Tecnológica Nacional |
 | **Carrera** | Tecnicatura Universitaria en Programación a Distancia |
 | **Materia** | Proyecto Final (Trabajo Final de la carrera) |
 | **Proyecto** | FixHub |
@@ -49,13 +49,13 @@ El sistema contempla cuatro roles, que pueden acumularse en una misma cuenta:
 - **Técnico:** trabaja sobre las órdenes que tiene asignadas: diagnostica, registra tareas, repara y declara los repuestos consumidos.
 - **Cliente:** accede a un portal propio para ver sus equipos, el estado de sus reparaciones y sus presupuestos, y para aprobarlos o rechazarlos.
 
-Una misma cuenta podrá tener uno o varios roles simultaneamente. La cantidad de actores puede variar segun el contexto en el que se emplee el sistema (Taller pequeño o grande). 
+Una misma cuenta podrá tener uno o varios roles simultáneamente. La cantidad de actores puede variar según el contexto en el que se emplee el sistema (Taller pequeño o grande). 
 
 ### 1.3 Evidencia de validación del problema
 
 La validación del problema se apoya en la observación directa de un caso real: el servicio técnico electromecánico automotriz descrito en el punto anterior, donde uno de los integrantes del equipo trabaja y conoce de primera mano cómo se gestionan las reparaciones. De esa observación surgieron el flujo de trabajo actual, las dificultades identificadas y la estimación preliminar del tiempo que se pierde en tareas administrativas, que figuran en la Primera Entrega.
 
-Esta evidencia tiene un alcance que corresponde a un único taller y a la experiencia de un integrante del equipo, y las estimaciones de tiempo son aproximadas, no mediciones. En la Primera Entrega el equipo planteó ampliar la validación consultando a talleres y servicios técnicos de otros rubros, con preguntas sobre cómo registran hoy sus reparaciones, qué herramientas usan, cuánto tiempo dedican a tareas administrativas, cómo informan al cliente y qué funcionalidades consideran esenciales. Ese relevamiento nos arroja resultados similares en cuantos a resultados, dando un panorama similar en cuanto recursos, tiempo y herramientas actuales.
+Esta evidencia tiene un alcance que corresponde a un único taller y a la experiencia de un integrante del equipo, y las estimaciones de tiempo son aproximadas, no mediciones. En la Primera Entrega el equipo planteó ampliar la validación consultando a talleres y servicios técnicos de otros rubros, con preguntas sobre cómo registran sus reparaciones, qué herramientas utilizan, cuánto tiempo dedican a tareas administrativas, cómo informan al cliente y qué funcionalidades consideran esenciales. Ese relevamiento se realizó posteriormente y arrojó resultados similares, mostrando problemáticas comunes en cuanto al uso de herramientas no integradas, la gestión del tiempo y los recursos empleados.
 
 ### 1.4 Necesidad concreta
 
@@ -231,18 +231,17 @@ El backend se organiza por dominio en cinco paquetes (`autenticacion`, `clientes
 
 | Componente | Tecnología | Responsabilidad |
 |---|---|---|
-| Frontend | TypeScript, Vite, HTML y CSS | Interfaz, navegación por rol y consumo de la API |
+| Frontend | TypeScript 6, Vite 8, HTML y CSS | Interfaz, navegación por rol y consumo de la API |
 | Backend | Java 25, Spring Boot 4.1.1, Spring Web MVC | API REST y reglas de negocio |
 | Persistencia | Spring Data JPA con Hibernate | Mapeo objeto-relacional y consultas |
-| Seguridad | Spring Security con JWT (resource server) y BCrypt | Autenticación, autorización y protección de contraseñas |
+| Seguridad | Spring Security, OAuth2 Resource Server con JWT y BCrypt | Autenticación, autorización y protección de contraseñas |
 | Validación | Bean Validation | Validación de los datos de entrada |
-| Base de datos | MySQL | Almacenamiento relacional con restricciones de integridad |
-| Contenedor | Docker (build en varias etapas) | Empaquetado del backend para su despliegue |
+| Base de datos | MySQL 8.4 | Almacenamiento relacional con restricciones de integridad |
+| Contenedor | Docker | Empaquetado del backend para su despliegue |
 | Pruebas | JUnit, Spring Test y H2 en memoria | Pruebas automáticas del backend |
 | Pruebas del frontend | Vitest y jsdom | Pruebas automáticas de la lógica del frontend |
 | Control de versiones | Git y GitHub | Trabajo en equipo con ramas y Pull Requests |
-
-
+| Despliegue | Vercel, Render y Railway | Alojamiento del frontend, backend y base de datos |
 
 El frontend no usa un framework de interfaz: las páginas y los componentes son módulos TypeScript que construyen el DOM, y la navegación usa fragmentos de URL (`#/ruta`). Un efecto práctico de esto es que el sitio estático no necesita reglas de redirección en el servidor.
 
@@ -262,7 +261,7 @@ La concurrencia relevante está en el stock. Las entradas, los ajustes y los con
 
 ### 4.6 Despliegue y configuración
 
-El backend se configura con variables de entorno (`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, y opcionales como `PORT`, `JWT_EXPIRATION` y las de creación del administrador inicial), sin valores guardados en el repositorio. El frontend toma la dirección de la API de `VITE_API_BASE_URL`. El esquema de la base de datos se crea ejecutando los tres scripts de `docs/sql/` en orden, porque Hibernate no genera las tablas. Al iniciar, el backend crea los roles y los estados de orden faltantes y, si se habilita, un administrador inicial.
+Actualmente, el frontend se encuentra desplegado en Vercel, el backend en Render y la base de datos MySQL 8.4.13 en Railway. El backend se conecta a Railway mediante TLS con `VERIFY_CA`, y el frontend publicado consume la API desplegada. El sistema se encuentra operativo en producción.
 
 ---
 
@@ -406,7 +405,6 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 
 ### 7.2 Limitaciones conocidas
 
-- **Despliegue incompleto.** Según el README, el frontend está publicado en Vercel, pero el backend todavía no está desplegado en Render. La conexión entre Render y la base en Railway, con su configuración TLS, y la integración del frontend publicado con una API pública están pendientes. El sistema completo no está operativo en producción.
 - **Pruebas de frontend parciales y sin integración continua.** Las pruebas del frontend cubren la lógica de sesión, el router y los servicios, pero no la mayoría de las pantallas ni los flujos de punta a punta, y no hay integración continua configurada.
 - **Dashboard acotado.** Se calcula en el cliente con la información de órdenes y repuestos, y no ofrece estadísticas históricas.
 - **Un técnico, un diagnóstico y un presupuesto por orden**, sin versiones, por decisión de alcance.
@@ -415,7 +413,7 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 
 ### 7.3 Trabajo futuro
 
-Como líneas de continuación se identifican: completar el despliegue del backend y su conexión con la base y el frontend; ampliar las pruebas del frontend a las pantallas principales, sumar pruebas de punta a punta y configurar una integración continua; incorporar notificaciones al cliente; y retomar las funciones que quedaron fuera del alcance, como pagos, facturación o la integración con WhatsApp.
+Como líneas de continuación se identifican: ampliar las pruebas del frontend a las pantallas principales, sumar pruebas de punta a punta y configurar una integración continua, incorporar notificaciones al cliente y, fuera del alcance actual del MVP, evaluar funcionalidades como pagos, facturación o integración con WhatsApp Business.
 
 
 
@@ -435,4 +433,4 @@ Como líneas de continuación se identifican: completar el despliegue del backen
 |---|---|
 | Video final | [COMPLETAR: enlace al video final] |
 | Frontend desplegado | [https://fixhub-five.vercel.app](https://fixhub-five.vercel.app)  |
-| Repositorio | [https://github.com/damiannogueira/fixhub] (https://github.com/damiannogueira/fixhub) |
+| Repositorio | [https://github.com/damiannogueira/fixhub](https://github.com/damiannogueira/fixhub) |
