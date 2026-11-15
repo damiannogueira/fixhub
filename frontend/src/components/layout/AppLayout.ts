@@ -136,7 +136,7 @@ export function renderAppLayout(content: HTMLElement, title: string): HTMLElemen
   layout.querySelector('.logout-button')?.addEventListener('click', () => {
     clearSession();
     resetAuthState();
-    router.navigate('/login');
+    router.navigate('/');
   });
   layout.querySelector('.menu-toggle')?.addEventListener('click', () => layout.classList.toggle('sidebar-open'));
   return layout;

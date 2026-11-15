@@ -1,5 +1,8 @@
 import { router } from './router/router';
-import { resetAuthState } from './utils/authState';
+import { hasAuthenticatedSession, requiresPasswordChange, resetAuthState } from './utils/authState';
+import { getAccessToken } from './utils/authStorage';
+
+let lastRender: string | null = null;
 
 function initApp(): void {
   // Buscamos el contenedor principal
@@ -10,6 +13,11 @@ function initApp(): void {
     console.error('Error crítico: No se encontró el elemento <div id="app"> en el index.html');
     return;
   }
+
+  hasAuthenticatedSession();
+  const signature = JSON.stringify([window.location.hash, getAccessToken(), requiresPasswordChange()]);
+  if (signature === lastRender && app.childElementCount > 0) return;
+  lastRender = signature;
 
   // 1. Le pedimos al router que nos dé el elemento HTML de la página actual
   const page = router.renderCurrentRoute();
@@ -31,3 +39,9 @@ window.addEventListener('fixhub:session-expired', () => {
 
 // Arrancar la aplicación cuando carga la página
 document.addEventListener('DOMContentLoaded', initApp);
+window.addEventListener('storage', (event) => {
+  if (event.storageArea === localStorage
+    && (event.key === null || event.key === 'access_token' || event.key === 'fixhub.requires_password_change')) {
+    initApp();
+  }
+});

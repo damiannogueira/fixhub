@@ -6,6 +6,8 @@ const AUTH_MESSAGE_KEY = 'fixhub.auth_message';
 
 type JwtPayload = {
   roles?: unknown;
+  exp?: unknown;
+  requiereCambioClave?: unknown;
 };
 
 function decodeBase64Url(value: string): string {
@@ -25,6 +27,10 @@ export function decodeRoles(token: string): Rol[] {
     payload = JSON.parse(decodeBase64Url(parts[1])) as JwtPayload;
   } catch {
     throw new Error('No se pudo decodificar el token de acceso.');
+  }
+
+  if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now()) {
+    throw new Error('El token de acceso venció. Iniciá sesión nuevamente.');
   }
 
   if (!Array.isArray(payload.roles)) {
@@ -69,6 +75,14 @@ export function saveLoginResponse(response: LoginResponse): Rol[] {
 }
 
 export function getPasswordChangeRequired(): boolean {
+  const token = getAccessToken();
+  if (!token) return false;
+  try {
+    const payload = JSON.parse(decodeBase64Url(token.split('.')[1])) as JwtPayload;
+    if (typeof payload.requiereCambioClave === 'boolean') return payload.requiereCambioClave;
+  } catch {
+    return false;
+  }
   return localStorage.getItem(PASSWORD_CHANGE_KEY) === 'true';
 }
 

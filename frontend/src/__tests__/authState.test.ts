@@ -1,3 +1,5 @@
+import { makeToken, loginResponse } from './fixtures/auth';
+import type { Rol } from '../types/auth';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getAuthState,
@@ -10,9 +12,8 @@ import {
 } from '../utils/authState';
 import { isHybridTechnician, isTechnicianOnly } from '../utils/technicianView';
 
-function login(roles: string[], requiereCambioClave = false): void {
-  const payload = btoa(JSON.stringify({ roles })).replaceAll('=', '');
-  setAuthenticated({ token: `h.${payload}.s`, requiereCambioClave } as never);
+function login(roles: Rol[], requiereCambioClave = false): void {
+  setAuthenticated(loginResponse(roles, requiereCambioClave));
 }
 
 describe('authState', () => {
@@ -34,11 +35,34 @@ describe('authState', () => {
     expect(getAuthState().roles).toEqual(['RECEPCIONISTA']);
   });
 
-  it('requiresPasswordChange se limpia con markPasswordChanged', () => {
+  it('el indicador del JWT mantiene el cambio obligatorio aunque se limpie el auxiliar', () => {
     login(['CLIENTE'], true);
     expect(requiresPasswordChange()).toBe(true);
     markPasswordChanged();
+    expect(requiresPasswordChange()).toBe(true);
+  });
+
+  it('descarta una sesion vencida aunque conserve roles en memoria', () => {
+    login(['ADMINISTRADOR']);
+    localStorage.setItem('access_token', makeToken({ exp: 1 }));
+    expect(hasAuthenticatedSession()).toBe(false);
+    expect(localStorage.getItem('access_token')).toBeNull();
     expect(requiresPasswordChange()).toBe(false);
+  });
+
+  it('sincroniza el cierre y el reemplazo de token desde otra pestana', () => {
+    login(['ADMINISTRADOR']);
+    localStorage.removeItem('access_token');
+    expect(hasAnyRole(['ADMINISTRADOR'])).toBe(false);
+    localStorage.setItem('access_token', makeToken({ roles: ['CLIENTE'], requiereCambioClave: false }));
+    localStorage.setItem('fixhub.requires_password_change', 'true');
+    expect(hasAnyRole(['CLIENTE'])).toBe(true);
+    expect(requiresPasswordChange()).toBe(false);
+  });
+
+  it('restaura la obligacion del JWT aunque falte la bandera local', () => {
+    localStorage.setItem('access_token', makeToken({ roles: ['CLIENTE'], requiereCambioClave: true }));
+    expect(requiresPasswordChange()).toBe(true);
   });
 
   it('distingue técnico puro de técnico híbrido', () => {

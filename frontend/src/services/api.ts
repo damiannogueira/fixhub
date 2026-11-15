@@ -1,6 +1,6 @@
 import type { Rol } from '../types/auth';
 import { getAuthState } from '../utils/authState';
-import { clearSession, saveAuthMessage } from '../utils/authStorage';
+import { clearSession, decodeRoles, getAccessToken, saveAuthMessage } from '../utils/authStorage';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api';
 
@@ -32,8 +32,14 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const token = localStorage.getItem('access_token');
+  const token = path === '/auth/login' ? null : getAccessToken();
   if (token) {
+    try {
+      decodeRoles(token);
+    } catch {
+      expireSession();
+      throw new ApiError('Tu sesión expiró. Iniciá sesión nuevamente.', 401);
+    }
     headers.set('Authorization', `Bearer ${token}`);
   }
 
@@ -52,11 +58,9 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const sessionExpired = response.status === 401 && token !== null && window.location.hash !== '#/login';
+    const sessionExpired = response.status === 401 && token !== null && token === getAccessToken();
     if (sessionExpired) {
-      clearSession();
-      saveAuthMessage('Tu sesión expiró. Iniciá sesión nuevamente.');
-      window.dispatchEvent(new CustomEvent('fixhub:session-expired'));
+      expireSession();
     }
 
     const backendMessage = await readBackendMessage(response);
@@ -71,6 +75,12 @@ export async function apiRequest<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+function expireSession(): void {
+  clearSession();
+  saveAuthMessage('Tu sesión expiró. Iniciá sesión nuevamente.');
+  window.dispatchEvent(new CustomEvent('fixhub:session-expired'));
 }
 
 // Mensajes genéricos de Spring/servlet que no aportan nada al usuario.

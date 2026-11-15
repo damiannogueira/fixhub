@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { router } from '../../router/router';
 import { login } from '../../services/authService';
 import { hasAnyRole, setAuthenticated } from '../../utils/authState';
-import { consumeAuthMessage } from '../../utils/authStorage';
+import { consumeAuthMessage, getAccessToken } from '../../utils/authStorage';
 import logoUrl from '../../assets/img/Logo tecnológico FixHub con soporte central.png';
 
 export const LoginPage = {
@@ -18,9 +18,12 @@ export const LoginPage = {
         <p class="login-subtitle">Tu Plataforma de Soporte Central</p>
       </div>
       <form id="login-form" class="login-form"></form>
+      <a href="#/" class="btn btn-secondary btn-full">Volver al inicio</a>
     `;
     
     const card = Card.render(cardContent);
+    let exited = false;
+    card.querySelector('a[href="#/"]')?.addEventListener('click', () => { exited = true; });
     const form = card.querySelector('#login-form') as HTMLFormElement;
     const authMessage = consumeAuthMessage();
     if (authMessage) {
@@ -57,6 +60,7 @@ export const LoginPage = {
       const username = String(formData.get('username') ?? '').trim();
       const password = String(formData.get('password') ?? '');
       const submit = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (submit.disabled) return;
       clearMessage(form);
 
       if (!username || password.length < 8) {
@@ -65,9 +69,14 @@ export const LoginPage = {
       }
 
       submit.disabled = true;
+      const requestToken = getAccessToken();
+      const requestHash = window.location.hash;
+      const isCurrent = () => !exited && wrapper.isConnected
+        && window.location.hash === requestHash && getAccessToken() === requestToken;
 
       login({ identificador: username, clave: password })
         .then((response) => {
+          if (!isCurrent()) return;
           setAuthenticated(response);
           const isClientOnly = hasAnyRole(['CLIENTE'])
             && !hasAnyRole(['ADMINISTRADOR', 'RECEPCIONISTA', 'TECNICO']);
@@ -76,6 +85,7 @@ export const LoginPage = {
             : isClientOnly ? '/mi-cuenta' : '/dashboard');
         })
         .catch((error: unknown) => {
+          if (!isCurrent()) return;
           showMessage(form, error instanceof Error ? error.message : 'No se pudo iniciar sesión.');
           submit.disabled = false;
         });

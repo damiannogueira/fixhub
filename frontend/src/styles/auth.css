@@ -97,6 +97,11 @@
   margin-top: 0.5rem;
 }
 
+.login-wrapper a.btn-full {
+  display: block;
+  text-decoration: none;
+}
+
 .form-alert {
   padding: .75rem 1rem;
   border: 1px solid #fecaca;

@@ -1,3 +1,4 @@
+import { makeToken } from './fixtures/auth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { changePassword, login } from '../services/authService';
 import { actualizarCliente, listarClientes, obtenerMiPerfil } from '../services/clientesService';
@@ -117,8 +118,7 @@ describe('servicios: URL, método y cuerpo', () => {
 
 describe('dashboardService', () => {
   function setRoles(roles: string[]): void {
-    const payload = btoa(JSON.stringify({ roles })).replaceAll('=', '');
-    localStorage.setItem('access_token', `h.${payload}.s`);
+    localStorage.setItem('access_token', makeToken({ roles }));
   }
 
   it('calcula órdenes abiertas, en diagnóstico, listas y repuestos con stock bajo', async () => {

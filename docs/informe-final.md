@@ -177,7 +177,7 @@ El diccionario de datos completo y la justificación del diseño están en [docs
 
 Las reglas siguientes están implementadas en el backend. Se indica entre paréntesis dónde se aplican.
 
-**Acceso y cuentas.** Los roles internos (Administrador, Recepcionista y Técnico) pueden combinarse en una misma cuenta, que acumula sus permisos. El rol Cliente es exclusivo: el backend rechaza combinarlo con roles internos (`UsuarioService`). Las contraseñas no pueden estar formadas solo por dígitos, y la nueva clave debe ser distinta de la actual. Cada cliente se vincula con una única cuenta, y un cliente que ya tiene cuenta la reutiliza para nuevos equipos y órdenes. No existe registro público de usuarios: las cuentas las crea personal autorizado. La cuenta nueva nace con una clave temporal y el indicador `requiere_cambio_clave` activo; mientras ese indicador esté activo, un filtro de seguridad bloquea el uso del resto de la API hasta que se cambie la clave (`CambioClaveObligatorioFilter`). Se puede ingresar con correo electrónico o con teléfono.
+**Acceso y cuentas.** Los roles internos (Administrador, Recepcionista y Técnico) pueden combinarse en una misma cuenta, que acumula sus permisos. El rol Cliente es exclusivo: el backend rechaza combinarlo con roles internos (`UsuarioService`). Las contraseñas deben tener entre 8 y 72 caracteres, no pueden estar formadas solo por dígitos, y la nueva clave debe ser distinta de la actual. Cada cliente se vincula con una única cuenta, y un cliente que ya tiene cuenta la reutiliza para nuevos equipos y órdenes. No existe registro público de usuarios: las cuentas las crea personal autorizado. Las cuentas nuevas, incluidas las internas, nacen con una clave temporal y el indicador `requiere_cambio_clave` activo. Ese valor se incorpora al JWT y el filtro `CambioClaveObligatorioFilter` bloquea el resto de la API cuando el token exige el cambio. Al cambiar la clave se desactiva el indicador de la cuenta y se solicita un nuevo login; un restablecimiento administrativo vuelve a activarlo para los próximos ingresos. Los tokens anteriores conservan sus claims, con la limitación descrita en 7.2. Se puede ingresar con correo electrónico o con teléfono.
 
 **Órdenes de trabajo.** Toda orden se asocia a un equipo y, por medio de él, a un cliente. Las transiciones de estado válidas son las del diagrama siguiente, y cualquier otra se rechaza con `TransicionEstadoInvalidaException`. Una orden puede crearse sin técnico, pero necesita uno antes de pasar a `EN_DIAGNOSTICO` (`TecnicoRequeridoException`). Las transiciones técnicas solo las puede hacer el técnico asignado. La cancelación solo está permitida desde `RECIBIDA`, `EN_DIAGNOSTICO`, `PENDIENTE_APROBACION` y `APROBADA` (`OrdenNoCancelableException`), exige un motivo y queda en el historial. Cada asignación de técnico, cambio de estado y cancelación se registra en `historial_ordenes`.
 
@@ -231,7 +231,7 @@ El backend se organiza por dominio en cinco paquetes (`autenticacion`, `clientes
 
 | Componente | Tecnología | Responsabilidad |
 |---|---|---|
-| Frontend | TypeScript 6, Vite 8, HTML y CSS | Interfaz, navegación por rol y consumo de la API |
+| Frontend | TypeScript 6, Vite 8.3.8, HTML y CSS | Interfaz, navegación por rol y consumo de la API |
 | Backend | Java 25, Spring Boot 4.1.1, Spring Web MVC | API REST y reglas de negocio |
 | Persistencia | Spring Data JPA con Hibernate | Mapeo objeto-relacional y consultas |
 | Seguridad | Spring Security, OAuth2 Resource Server con JWT y BCrypt | Autenticación, autorización y protección de contraseñas |
@@ -249,6 +249,8 @@ El frontend no usa un framework de interfaz: las páginas y los componentes son 
 
 La autenticación se realiza con `POST /api/auth/login`, que devuelve un JWT firmado con HS256. El token incluye el identificador del usuario, sus roles y un indicador de cambio de clave pendiente, y su duración es configurable (una hora por defecto). La sesión es sin estado, por lo que se desactiva CSRF, y todos los endpoints requieren autenticación salvo el login.
 
+El backend valida la firma, el emisor y el vencimiento del JWT. El frontend conserva el token y un indicador auxiliar en `localStorage`; al restaurar la sesión y antes de enviar solicitudes autenticadas rechaza tokens vencidos, sin `exp` o con un vencimiento no numérico o no finito. Estas comprobaciones de interfaz no sustituyen la validación del backend. El login se envía sin el JWT anterior y la obligación de cambiar la clave se obtiene prioritariamente del claim del token.
+
 La autorización se aplica en dos niveles. Cada endpoint declara los roles permitidos con `@PreAuthorize`. Además, los services verifican la propiedad de los datos: por ejemplo, un cliente solo accede a sus equipos, órdenes y presupuestos mediante rutas `/me` que se resuelven con el usuario autenticado, y un técnico solo opera sobre las órdenes que tiene asignadas. Las contraseñas se almacenan con BCrypt. Los errores 401 y 403 se devuelven en un formato uniforme (Problem Details). CORS admite únicamente los orígenes del frontend publicado y de los entornos locales de desarrollo.
 
 ### 4.4 Integraciones y servicios externos
@@ -259,9 +261,11 @@ El sistema no integra servicios externos de negocio. Los únicos servicios de te
 
 La concurrencia relevante está en el stock. Las entradas, los ajustes y los consumos obtienen el repuesto con un bloqueo pesimista de escritura (`PESSIMISTIC_WRITE`) dentro de una transacción, de modo que dos operaciones simultáneas sobre el mismo repuesto se serializan y no pueden dejar un stock inconsistente o negativo. No se utiliza control de concurrencia optimista (versionado) en otras entidades.
 
+En el frontend, los eventos `storage` sincronizan el estado de autenticación entre pestañas del mismo origen. Los cambios redundantes no vuelven a crear el formulario abierto; un cambio efectivo de sesión actualiza la pantalla. Un 401 solo invalida la sesión si el token usado por la solicitud sigue siendo el activo. Las respuestas pendientes de login o cambio de contraseña se descartan si se abandonó la pantalla, cambió la ruta o cambió el token, para que una operación anterior no autentique al usuario ni cierre una sesión más reciente.
+
 ### 4.6 Despliegue y configuración
 
-Actualmente, el frontend se encuentra desplegado en Vercel, el backend en Render y la base de datos MySQL 8.4.13 en Railway. El backend se conecta a Railway mediante TLS con `VERIFY_CA`, y el frontend publicado consume la API desplegada. El sistema se encuentra operativo en producción.
+El MVP está implementado y desplegado: el frontend en Vercel, el backend en Render y la base de datos MySQL 8.4.13 en Railway. El backend se conecta a Railway mediante TLS con `VERIFY_CA`, y el frontend publicado consume la API desplegada. La disponibilidad antes de la evaluación debe verificarse, conforme a la limitación de 7.2.
 
 ---
 
@@ -272,6 +276,8 @@ Actualmente, el frontend se encuentra desplegado en Vercel, el backend en Render
 La aplicación se organiza en los cinco módulos funcionales del punto 2.2, más un dashboard y una página de inicio. A continuación se describe cada uno y se muestran, con datos de prueba, las pantallas principales de la vista de gestión.
 
 **Página de inicio y acceso.** La página de inicio es pública: presenta el sistema, sus beneficios y un botón para ingresar. Desde allí se llega al formulario de inicio de sesión, donde el usuario se identifica con su correo electrónico o su teléfono y su contraseña.
+
+El login ofrece un enlace para volver al inicio. Cerrar sesión desde el panel limpia el token, el indicador auxiliar y el estado en memoria y regresa a la landing (`#/`). La pantalla de cambio obligatorio también permite cerrar sesión y volver al inicio. Estas salidas no permiten acceder a rutas privadas sin una sesión ni evadir el cambio de contraseña exigido por el JWT.
 
 ![Figura 1. Página de inicio (landing)](img/captura-landing.png)
 
@@ -323,6 +329,8 @@ La aplicación se organiza en los cinco módulos funcionales del punto 2.2, más
 
 Del código se desprenden varias soluciones a problemas técnicos: la protección del stock frente a operaciones simultáneas con bloqueo pesimista; el requerimiento de cambio de clave en el primer ingreso resuelto con un filtro y un claim del token; la unificación de las respuestas de seguridad 401 y 403; y el manejo de la expiración de sesión en el frontend, que limpia la sesión y vuelve al login.
 
+La revisión de sesiones contempló un comportamiento observado con una cuenta Administrador: un navegador seguía solicitando cambiar la clave después de haberla cambiado desde otro. Un JWT anterior conserva el claim de cambio obligatorio, por lo que el comportamiento es compatible con una sesión antigua, pero no se atribuye el incidente a una causa definitivamente comprobada. Se corrigieron la restauración de tokens vencidos y la sincronización del estado local, y se agregaron comprobaciones para descartar respuestas asincrónicas de sesiones o pantallas anteriores. Si la clave ya se cambió en otro navegador, corresponde cerrar sesión e ingresar con la nueva, sin repetir el cambio.
+
 ---
 
 ## 6. Pruebas y validación
@@ -338,34 +346,39 @@ Se ejecutan desde la carpeta `backend`:
 ./mvnw verify    # además compila y empaqueta el JAR
 ```
 
-La última ejecución completa de `./mvnw test`, realizada el 13/11/2026, resultó en **334 pruebas ejecutadas, 0 fallas, 0 errores y 0 omitidas**, con el resultado `BUILD SUCCESS` en 29,1 segundos. La cantidad de ejecuciones supera la de métodos de prueba porque varios son parametrizados y se ejecutan una vez por cada conjunto de valores.
+La ejecución de `./mvnw test` registrada el 13/11/2026 resultó en **334 pruebas ejecutadas, 0 fallas, 0 errores y 0 omitidas**, con el resultado `BUILD SUCCESS` en 29,1 segundos. La cantidad de ejecuciones supera la de métodos de prueba porque varios son parametrizados y se ejecutan una vez por cada conjunto de valores. Una ejecución posterior de `mvnw verify`, realizada ese mismo día, confirmó las **334 pruebas sin fallas, errores ni omitidas**, con `BUILD SUCCESS` y generación del JAR. La actualización documental no implica una nueva ejecución del backend.
 
 ![Figura 7. Resultado de la ejecución de las pruebas](img/captura-tests.png)
 
 *Figura 7. Salida de `./mvnw test` con el resumen de resultados.*
 
-**Pruebas del frontend.** El frontend cuenta con 85 pruebas automáticas, distribuidas en 8 archivos, escritas con Vitest y ejecutadas sobre un DOM simulado (jsdom). Se limitan a la lógica del cliente y no ejercitan el sistema completo. Cubren las siguientes áreas:
+**Pruebas del frontend.** El frontend cuenta con 119 pruebas automáticas, distribuidas en 10 archivos, escritas con Vitest y ejecutadas sobre un DOM simulado (jsdom). Se limitan a la lógica del cliente y no ejercitan el sistema completo. Cubren las siguientes áreas:
 
 | Área | Qué se verifica |
 |---|---|
-| Sesión y roles | Decodificación de roles del JWT, rechazo de tokens mal formados, guardado y borrado de la sesión, y aviso de cambio de clave obligatorio |
-| Comunicación con la API | Envío del token en cada pedido, mensajes de error según el estado HTTP, cierre de sesión ante un 401 y falla de red |
+| Sesión y roles | Decodificación de roles del JWT, persistencia y limpieza de sesión, rechazo de tokens mal formados, vencidos o sin `exp`, y conservación del cambio obligatorio indicado por el JWT |
+| Comunicación con la API | Envío del Bearer en solicitudes autenticadas, login sin token anterior, rechazo local de tokens vencidos, errores HTTP y de red, e invalidación ante un 401 solo si corresponde a la sesión activa |
 | Servicios | URL, método HTTP y cuerpo de los pedidos a la API, y el cálculo de los indicadores del dashboard |
 | Control de acceso del router | Redirección al login sin sesión, a la pantalla de cambio de clave, y rechazo de rutas no permitidas para cada rol |
-| Pantalla de inicio de sesión | Validación del formulario, navegación según el rol y manejo de errores del login |
+| Pantalla de inicio de sesión | Validación del formulario, navegación según el rol, manejo de errores y descarte de respuestas tardías tras salir, reemplazar la pantalla o cambiar de sesión |
+| Cambio de contraseña y navegación | Enlace al inicio, cierre de sesión desde el panel y cambio de clave, limpieza del estado, nuevo login tras guardar y descarte de respuestas tardías de cambio de contraseña |
+| Almacenamiento entre pestañas | Eventos `storage` simulados para reemplazo de token, cierre y limpieza remotos; conservación del formulario y ausencia de renderizados duplicados ante cambios redundantes |
 | Componentes y utilidades | Componentes de interfaz, escape de texto ingresado por el usuario y formatos de fechas, estados y montos |
 
 Se ejecutan desde la carpeta `frontend`:
 
 ```bash
 npm test         # ejecuta las pruebas una sola vez
+npm run build    # verifica tipos y genera el sitio estático
 ```
 
-La última ejecución resultó en **85 pruebas ejecutadas y 85 aprobadas, sin fallas**, y la verificación de tipos con `tsc --noEmit` no informó errores. Las llamadas a la API se simulan, por lo que estas pruebas no requieren el backend ni la base de datos.
+La última ejecución validada, del 13/11/2026, resultó en **119 pruebas ejecutadas y 119 aprobadas en 10 archivos, sin fallas**. `npm run build` también finalizó correctamente, incluyendo la comprobación de tipos y la compilación con Vite 8.3.8. Se utilizó Node 24.15.0 local, compatible con jsdom 31. Las llamadas a la API se simulan, por lo que estas pruebas no requieren el backend ni la base de datos. No constituyen pruebas de extremo a extremo contra producción.
+
+La Figura 8 muestra el resumen de una ejecución de `npm test` con las 119 pruebas aprobadas en 10 archivos.
 
 ![Figura 8. Resultado de la ejecución de las pruebas del frontend](img/captura-tests-frontend.png)
 
-*Figura 8. Salida de `npm test` con el resumen de resultados del frontend.*
+*Figura 8. Captura de `npm test`: 119 pruebas aprobadas en 10 archivos, sin fallas.*
 
 ### 6.2 Cómo se comprueban las reglas críticas
 
@@ -380,18 +393,22 @@ Las reglas más importantes del sistema tienen pruebas propias en los services y
 | El stock no puede quedar negativo | `StockServiceTest`, `StockControllerTest` |
 | Cada consumo genera su movimiento de stock | `StockServiceTest`, `MovimientoStockRepositoryTest` |
 | Permisos por rol (401 y 403) | `SecurityErrorResponsesTest`, `*ControllerTest` |
-| Cambio obligatorio de clave | `AuthControllerTest`, `AutenticacionServiceTest` |
+| Cambio obligatorio y política de contraseñas | `AuthControllerTest`, `AutenticacionServiceTest`, `UsuarioClaveIntegrationTest`, `authState.test.ts`, `router.test.ts`, `sessionNavigation.test.ts` |
 | Atomicidad de las operaciones compuestas | `OrdenTrabajoTransactionTest`, `ClienteTransactionTest` |
 | Cada rol accede solo a sus pantallas (frontend) | `router.test.ts` |
-| La sesión vencida se cierra y se informa al usuario (frontend) | `api.test.ts`, `loginPage.test.ts` |
+| JWT vencidos o sin `exp` no restauran una sesión ni se envían a la API (frontend) | `authStorage.test.ts`, `authState.test.ts`, `router.test.ts`, `api.test.ts` |
+| Un 401 anterior no cierra una sesión nueva (frontend) | `api.test.ts` |
+| Login y cambio de clave descartan respuestas de pantallas o sesiones anteriores (frontend) | `loginPage.test.ts`, `sessionNavigation.test.ts` |
+| Cerrar sesión vuelve a la landing y limpia la autenticación (frontend) | `sessionNavigation.test.ts` |
+| Eventos de almacenamiento sincronizan sesiones sin perder formularios ante cambios redundantes (frontend) | `storageEvents.test.ts`, `authState.test.ts` |
 
 
 
 ### 6.3 Limitaciones de las pruebas
 
-Las pruebas automáticas del frontend cubren la sesión, la comunicación con la API, el control de acceso del router, la pantalla de inicio de sesión y los componentes básicos, pero no el resto de las pantallas. Quedan sin pruebas automáticas las páginas de órdenes, inventario, presupuestos, clientes y usuarios, el menú de navegación y la pantalla de cambio de clave. Tampoco hay pruebas de punta a punta que recorran un flujo completo contra el backend real, ni se midió el porcentaje de cobertura del frontend.
+Las pruebas automáticas del frontend cubren la sesión, la comunicación con la API, el control de acceso del router, el login, la pantalla de cambio de clave, determinadas acciones de navegación y los componentes básicos. Incluyen el cierre de sesión desde el panel, pero no validan todo el menú ni los flujos completos de las páginas de órdenes, inventario, presupuestos, clientes y usuarios. Usan jsdom, mocks de HTTP y eventos de almacenamiento simulados: no comprueban dos navegadores reales ni recorridos de punta a punta contra el backend o producción. No se midió el porcentaje de cobertura del frontend.
 
-Las pruebas del backend no reemplazan una validación integral contra MySQL ni pruebas del sistema desplegado, porque usan H2. La validación contra MySQL se realizó de forma manual sobre el esquema y las operaciones funcionales, según lo documentado en el README.
+Las pruebas del backend que requieren persistencia usan H2; no reemplazan una validación integral contra MySQL ni pruebas del sistema desplegado. Los resultados automáticos consignados no acreditan una comprobación final de disponibilidad o un recorrido integral en producción antes de la evaluación.
 
 
 
@@ -410,6 +427,9 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 - **Un técnico, un diagnóstico y un presupuesto por orden**, sin versiones, por decisión de alcance.
 - **Sin notificaciones automáticas** al cliente (correo, WhatsApp u otras).
 - **Sin migraciones de base de datos.** El esquema se crea con scripts SQL que están pensados para una base vacía.
+- **JWT sin revocación global.** Cambiar o restablecer una contraseña no revoca ni renueva los JWT emitidos: conservan sus claims hasta vencer. Un token anterior con cambio obligatorio sigue restringido aunque la cuenta ya haya completado el cambio; uno sin esa restricción puede seguir vigente tras un restablecimiento administrativo. No hay refresh tokens. Otros navegadores mantienen sesiones independientes.
+- **Operaciones pendientes al salir.** Descartar una respuesta tardía protege el estado del navegador, pero no cancela un cambio de contraseña ya recibido por el servidor. Si se completó, el siguiente ingreso debe realizarse con la nueva clave.
+- **Créditos de Railway.** La base MySQL está alojada en Railway y su utilización está condicionada por los créditos disponibles en el servicio. Se mantiene un conjunto limitado de datos ficticios de demostración hasta completar la grabación del video. La disponibilidad de la aplicación desplegada debe verificarse antes de la evaluación.
 
 ### 7.3 Trabajo futuro
 
@@ -428,6 +448,8 @@ Como líneas de continuación se identifican: ampliar las pruebas del frontend a
 ---
 
 ## 8. Enlaces
+
+El MVP está implementado y desplegado. El video explicativo y el PDF definitivo de este informe siguen pendientes; el TFI no se presenta como entregado o cerrado definitivamente. Gabriel incorporará el enlace definitivo del video y generará el PDF de entrega.
 
 | Recurso | Enlace |
 |---|---|
