@@ -380,7 +380,9 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-La Segunda Entrega de diseño y documentación se encuentra completada y el MVP está implementado. El frontend está desplegado en Vercel, el backend en Render y la base de datos MySQL funciona en Railway. Los PR #25 y #26 están integrados en `main`. Continúan las validaciones y el cierre documental: existe [el informe final en Markdown](docs/informe-final.md), pero su PDF definitivo y el video explicativo final siguen pendientes. El TFI no se considera entregado ni cerrado definitivamente. El sistema cuenta con:
+La Segunda Entrega de diseño y documentación se encuentra completada y el MVP está implementado. El frontend está desplegado en Vercel, el backend en Render y la base de datos MySQL funciona en Railway. Los PR #25 y #26 están integrados en `main`. Continúan las validaciones y el cierre documental: el informe final está disponible en [PDF](docs/informe-final.pdf) y en [Markdown](docs/informe-final.md), y el video explicativo está enlazado en la sección Trabajo Final Integrador. 
+
+El sistema cuenta con:
 
 - Autenticación JWT, gestión de usuarios y roles, cambio obligatorio de clave y respuestas de error 401/403.
 - Gestión de clientes y equipos, creación o reutilización de cuentas Cliente y consultas de información propia.
@@ -508,8 +510,16 @@ En Render se utiliza el contexto Docker `backend/`, se configuran las variables 
 
 ### Acceso de evaluación y usuarios de prueba
 
-El equipo debe proporcionar por un canal privado las cuentas de evaluación autorizadas, sus roles y los datos ficticios habilitados para la demostración. No se publican credenciales administrativas ni se presupone que las cuentas ilustrativas de Postman existan. Quedan por confirmar los identificadores, el medio de entrega de las claves y las órdenes asignadas a cada Técnico de prueba.
+Para la evaluación se dispone de las siguientes cuentas de prueba, con datos ficticios. Cada usuario puede iniciar sesión con su correo electrónico o con su número de teléfono.
 
+| Rol | Usuario | Contraseña | Teléfono |
+| --- | --- | --- | --- |
+| Administrador | admin@mail.com | adminpassword | 1111111111 |
+| Recepcionista | recepcionista.prueba@fixhub.com | fix_0000 | 2222222222 |
+| Cliente | cliente.prueba@fixhub.com | fix_0000 | 3333333333 |
+| Técnico | tecnico.prueba@fixhub.com | fix_0000 | 4444444444 |
+
+N
 | Rol | Recorrido de evaluación |
 | --- | --- |
 | Administrador | Consultar usuarios, clientes, órdenes, presupuestos, catálogo y movimientos; realizar modificaciones únicamente sobre registros de demostración autorizados |
@@ -557,9 +567,10 @@ Las pruebas del backend abarcan seguridad, controllers, servicios, repositories 
 
 Proyecto desarrollado como Trabajo Final Integrador de la Tecnicatura Universitaria en Programación a Distancia.
 
-Recursos de entrega pendientes de completar por Gabriel cuando estén disponibles:
+Recursos de entrega:
 
-| Recurso | Estado |
+| Recurso | Enlace |
 | --- | --- |
-| PDF definitivo del informe | PENDIENTE: incorporar aquí el enlace después de generar el PDF |
-| Video explicativo final | PENDIENTE: incorporar aquí el enlace definitivo y completar también la sección 8 de `docs/informe-final.md` |
+| Informe final (PDF) | [docs/informe-final.pdf](docs/informe-final.pdf) |
+| Informe final (Markdown) | [docs/informe-final.md](docs/informe-final.md) |
+| Video explicativo final | [https://youtu.be/LPeZfMMy8HA](https://youtu.be/LPeZfMMy8HA) |
