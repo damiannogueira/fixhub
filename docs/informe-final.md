@@ -460,11 +460,6 @@ El MVP está implementado y desplegado con su respectivo enlace. El video explic
 
 ### 8.1 Usuarios de prueba
 
-Para evaluar el sistema desplegado se dispone de las siguientes cuentas de prueba, con datos ficticios. Cada usuario puede iniciar sesión con su correo electrónico o con su número de teléfono.
+Para evaluar el sistema desplegado se dispone de una cuenta de prueba por cada rol (Administrador, Recepcionista, Técnico y Cliente), con datos ficticios. Cada usuario puede iniciar sesión con su correo electrónico o con su número de teléfono.
 
-| Rol | Usuario | Contraseña | Teléfono |
-|---|---|---|---|
-| Administrador | admin@mail.com | adminpassword | 1111111111 |
-| Recepcionista | recepcionista.prueba@fixhub.com | fix_0000 | 2222222222 |
-| Cliente | cliente.prueba@fixhub.com | fix_0000 | 3333333333 |
-| Técnico | tecnico.prueba@fixhub.com | fix_0000 | 4444444444 |
+Por seguridad, las credenciales de estas cuentas no se publican en el repositorio: fueron entregadas a la tutora por mensajería privada de Moodle.

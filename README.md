@@ -510,16 +510,10 @@ En Render se utiliza el contexto Docker `backend/`, se configuran las variables 
 
 ### Acceso de evaluación y usuarios de prueba
 
-Para la evaluación se dispone de las siguientes cuentas de prueba, con datos ficticios. Cada usuario puede iniciar sesión con su correo electrónico o con su número de teléfono.
+Para la evaluación se dispone de una cuenta de prueba por cada rol (Administrador, Recepcionista, Técnico y Cliente), con datos ficticios. Cada usuario puede iniciar sesión con su correo electrónico o con su número de teléfono.
 
-| Rol | Usuario | Contraseña | Teléfono |
-| --- | --- | --- | --- |
-| Administrador | admin@mail.com | adminpassword | 1111111111 |
-| Recepcionista | recepcionista.prueba@fixhub.com | fix_0000 | 2222222222 |
-| Cliente | cliente.prueba@fixhub.com | fix_0000 | 3333333333 |
-| Técnico | tecnico.prueba@fixhub.com | fix_0000 | 4444444444 |
+Por seguridad, las credenciales de estas cuentas no se publican en el repositorio: fueron entregadas a la tutora por mensajería en Moodle.
 
-N
 | Rol | Recorrido de evaluación |
 | --- | --- |
 | Administrador | Consultar usuarios, clientes, órdenes, presupuestos, catálogo y movimientos; realizar modificaciones únicamente sobre registros de demostración autorizados |
