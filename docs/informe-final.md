@@ -449,10 +449,17 @@ Como líneas de continuación se identifican: ampliar las pruebas del frontend a
 
 ## 8. Enlaces
 
-El MVP está implementado y desplegado. El video explicativo y el PDF definitivo de este informe siguen pendientes; el TFI no se presenta como entregado o cerrado definitivamente. Gabriel incorporará el enlace definitivo del video y generará el PDF de entrega.
+El MVP está implementado y desplegado con su respectivo enlace. El video explicativo y el PDF definitivo de este informe se encuentran detallados en este informe y en archivo README.md. 
+ 
 
 | Recurso | Enlace |
 |---|---|
-| Video final | [COMPLETAR: enlace al video final] |
-| Frontend desplegado | [https://fixhub-five.vercel.app](https://fixhub-five.vercel.app)  |
+| Video final | [https://youtu.be/LPeZfMMy8HA](https://youtu.be/LPeZfMMy8HA) |
+| Proyecto desplegado | [https://fixhub-five.vercel.app](https://fixhub-five.vercel.app)  |
 | Repositorio | [https://github.com/damiannogueira/fixhub](https://github.com/damiannogueira/fixhub) |
+
+### 8.1 Usuarios de prueba
+
+Para evaluar el sistema desplegado se dispone de una cuenta de prueba por cada rol (Administrador, Recepcionista, Técnico y Cliente), con datos ficticios. Cada usuario puede iniciar sesión con su correo electrónico o con su número de teléfono.
+
+Por seguridad, las credenciales de estas cuentas no se publican en el repositorio: fueron entregadas a la tutora por mensajería privada de Moodle.
