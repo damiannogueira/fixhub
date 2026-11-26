@@ -347,7 +347,7 @@ El frontend consume la API pública del backend desplegado en Render.
 
 ### Limitaciones conocidas
 
-La base MySQL está alojada en Railway y el proyecto está sujeto a los créditos disponibles en ese servicio. Hasta completar la grabación del video se mantiene un conjunto limitado de datos de demostración para administrar los recursos. Antes de la evaluación será necesario comprobar la disponibilidad del sistema desplegado.
+La base MySQL está alojada en Railway y el proyecto está sujeto a los créditos disponibles en ese servicio. Por ese motivo se mantiene un conjunto limitado de datos de demostración. Antes de la evaluación será necesario comprobar la disponibilidad del sistema desplegado. Además, el backend en Render puede tardar cerca de un minuto en responder la primera vez, porque el servicio se suspende cuando no recibe tráfico.
 
 ## Alcance
 
@@ -380,7 +380,7 @@ Quedan fuera del alcance inicial:
 
 ## Estado del proyecto
 
-La Segunda Entrega de diseño y documentación se encuentra completada y el MVP está implementado. El frontend está desplegado en Vercel, el backend en Render y la base de datos MySQL funciona en Railway. Los PR #25 y #26 están integrados en `main`. Continúan las validaciones y el cierre documental: el informe final está disponible en [PDF](docs/informe-final.pdf) y en [Markdown](docs/informe-final.md), y el video explicativo está enlazado en la sección Trabajo Final Integrador. 
+El MVP está implementado y desplegado: el frontend en Vercel, el backend en Render y la base de datos MySQL en Railway. El proyecto cuenta con el visto bueno de la tutora. El informe final está disponible en [PDF](docs/informe-final.pdf) y en [Markdown](docs/informe-final.md), y el video explicativo está enlazado en la sección Trabajo Final Integrador. 
 
 El sistema cuenta con:
 

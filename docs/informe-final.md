@@ -55,7 +55,7 @@ Una cuenta interna podrá tener uno o varios de los roles Administrador, Recepci
 
 La validación del problema se apoya en la observación directa de un caso real: el servicio técnico electromecánico automotriz descrito en el punto anterior, donde uno de los integrantes del equipo trabaja y conoce de primera mano cómo se gestionan las reparaciones. De esa observación surgieron el flujo de trabajo actual, las dificultades identificadas y la estimación preliminar del tiempo que se pierde en tareas administrativas, que figuran en la Primera Entrega.
 
-Esta evidencia tiene un alcance que corresponde a un único taller y a la experiencia de un integrante del equipo, y las estimaciones de tiempo son aproximadas, no mediciones. En la Primera Entrega el equipo planteó ampliar la validación consultando a talleres y servicios técnicos de otros rubros, con preguntas sobre cómo registran sus reparaciones, qué herramientas utilizan, cuánto tiempo dedican a tareas administrativas, cómo informan al cliente y qué funcionalidades consideran esenciales. Ese relevamiento se realizó posteriormente y arrojó resultados similares, mostrando problemáticas comunes en cuanto al uso de herramientas no integradas, la gestión del tiempo y los recursos empleados.
+Esta evidencia tiene un alcance que corresponde a un único taller y a la experiencia de un integrante del equipo, y las estimaciones de tiempo son aproximadas, no mediciones. En la Primera Entrega el equipo planteó ampliar la validación consultando a talleres y servicios técnicos de otros rubros, con preguntas sobre cómo registran sus reparaciones, qué herramientas utilizan, cuánto tiempo dedican a tareas administrativas, cómo informan al cliente y qué funcionalidades consideran esenciales. Ese relevamiento se realizó mediante consultas informales a personas que trabajan en otros servicios técnicos. No se documentó de manera estructurada ni se conservaron registros formales, por lo que sus resultados no constituyen evidencia cuantitativa. Sirvió para confirmar de forma cualitativa que las problemáticas observadas (herramientas no integradas, falta de trazabilidad y de control de stock, y tiempo dedicado a tareas administrativas) se repiten en otros contextos y no solamente en el caso real.
 
 ### 1.4 Necesidad concreta
 
@@ -429,7 +429,7 @@ FixHub centraliza en un único sistema el ciclo de una reparación: el registro 
 - **Sin migraciones de base de datos.** El esquema se crea con scripts SQL que están pensados para una base vacía.
 - **JWT sin revocación global.** Cambiar o restablecer una contraseña no revoca ni renueva los JWT emitidos: conservan sus claims hasta vencer. Un token anterior con cambio obligatorio sigue restringido aunque la cuenta ya haya completado el cambio; uno sin esa restricción puede seguir vigente tras un restablecimiento administrativo. No hay refresh tokens. Otros navegadores mantienen sesiones independientes.
 - **Operaciones pendientes al salir.** Descartar una respuesta tardía protege el estado del navegador, pero no cancela un cambio de contraseña ya recibido por el servidor. Si se completó, el siguiente ingreso debe realizarse con la nueva clave.
-- **Créditos de Railway.** La base MySQL está alojada en Railway y su utilización está condicionada por los créditos disponibles en el servicio. Se mantiene un conjunto limitado de datos ficticios de demostración hasta completar la grabación del video. La disponibilidad de la aplicación desplegada debe verificarse antes de la evaluación.
+- **Créditos de Railway y arranque en frío.** La base MySQL está alojada en Railway y su utilización está condicionada por los créditos disponibles en el servicio, por lo que se mantiene un conjunto limitado de datos ficticios de demostración. El backend alojado en Render puede demorar cerca de un minuto en responder la primera vez, porque el servicio se suspende cuando no recibe tráfico. La disponibilidad de la aplicación desplegada debe verificarse antes de la evaluación.
 
 ### 7.3 Trabajo futuro
 
@@ -449,7 +449,7 @@ Como líneas de continuación se identifican: ampliar las pruebas del frontend a
 
 ## 8. Enlaces
 
-El MVP está implementado y desplegado con su respectivo enlace. El video explicativo y el PDF definitivo de este informe se encuentran detallados en este informe y en archivo README.md. 
+El MVP está implementado y desplegado. El video explicativo y el informe en PDF están enlazados desde el README del repositorio, y el enlace al video también figura en la tabla siguiente. 
  
 
 | Recurso | Enlace |
